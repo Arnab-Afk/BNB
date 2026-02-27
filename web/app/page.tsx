@@ -1,15 +1,26 @@
+import Image from "next/image";
+import { FlickeringGrid } from "@/components/ui/flickering-grid";
+
 export default function Home() {
   return (
     <div className="font-(family-name:--font-manrope) text-black antialiased">
+      {/* Flickering grid background */}
+      <div className="fixed inset-0 -z-10">
+        <FlickeringGrid
+          className="w-full h-full"
+          squareSize={4}
+          gridGap={6}
+          color="#000000"
+          maxOpacity={0.08}
+          flickerChance={0.15}
+        />
+      </div>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-[#e5e7eb]">
         <nav className="container mx-auto px-6 h-14 flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-black flex items-center justify-center">
-              <div className="w-4 h-4 border-2 border-white rounded-full opacity-80" />
-            </div>
-            <span className="font-bold text-xl tracking-tighter">GHOST</span>
+          <div className="flex items-center">
+            <Image src="/image.png" alt="Ghost" width={120} height={36} priority />
           </div>
 
           {/* Nav Links */}
@@ -29,7 +40,7 @@ export default function Home() {
 
       <main>
         {/* Hero Section */}
-        <section className="container mx-auto px-6 pt-24 pb-32">
+        <section className="min-h-[calc(100vh-56px)] flex items-center container mx-auto px-6 py-24">
           <div className="max-w-4xl">
             <div className="inline-block border border-black px-3 py-1 mb-8 text-[10px] uppercase font-bold tracking-[0.2em] bg-white">
               v1.0.4 - Live on Mainnet
@@ -190,11 +201,8 @@ export default function Home() {
       <footer className="border-t border-[#e5e7eb] bg-white mt-20">
         <div className="container mx-auto px-6 py-12">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-black flex items-center justify-center">
-                <div className="w-3 h-3 border border-white rounded-full" />
-              </div>
-              <span className="font-bold text-sm tracking-tighter">GHOST</span>
+            <div className="flex items-center">
+              <Image src="/image.png" alt="Ghost" width={90} height={28} />
             </div>
             <div className="flex space-x-8 text-[10px] font-bold uppercase tracking-widest text-gray-500">
               <a className="hover:text-black" href="#">Twitter/X</a>
