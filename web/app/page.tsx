@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { FlickeringGrid } from "@/components/ui/flickering-grid";
 
 export default function Home() {
@@ -20,7 +19,7 @@ export default function Home() {
         <nav className="container mx-auto px-6 h-14 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <Image src="/image.png" alt="Ghost" width={120} height={36} priority />
+            <span className="font-(family-name:--font-pixel) text-sm tracking-tight">GHOST</span>
           </div>
 
           {/* Nav Links */}
@@ -361,7 +360,7 @@ export default function Home() {
         <div className="container mx-auto px-6 py-12">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex items-center">
-              <Image src="/image.png" alt="Ghost" width={90} height={28} />
+              <span className="font-(family-name:--font-pixel) text-xs tracking-tight">GHOST</span>
             </div>
             <div className="flex space-x-8 text-[10px] font-bold uppercase tracking-widest text-gray-500">
               <a className="hover:text-black" href="#">Twitter/X</a>
