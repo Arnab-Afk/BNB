@@ -10,6 +10,7 @@ import { connectDatabase, disconnectDatabase } from './db/prisma/client.js';
 import { merkleTree } from './zk/merkleTree.js';
 import { startOfacSyncJob, stopOfacSyncJob } from './compliance/ofac.js';
 import { createRelayWorker, redis } from './relayer/queue.js';
+import { startDepositIndexer, stopDepositIndexer } from './indexer/depositIndexer.js';
 import { checkBundlerHealth } from './relayer/bundlerClient.js';
 import { checkContractHealth } from './relayer/paymasterClient.js';
 import { checkQueueHealth } from './relayer/queue.js';
@@ -93,6 +94,9 @@ async function main() {
   // Start OFAC sync job
   startOfacSyncJob();
 
+  // Start on-chain deposit event indexer
+  startDepositIndexer();
+
   // Start BullMQ worker (in-process for simplicity; can be separated)
   const worker = createRelayWorker();
 
@@ -113,6 +117,7 @@ async function main() {
     await server.close();
     await worker.close();
     stopOfacSyncJob();
+    stopDepositIndexer();
     await disconnectDatabase();
     await redis.quit();
     logger.info('Shutdown complete');

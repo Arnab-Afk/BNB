@@ -9,6 +9,8 @@ import { z } from 'zod';
 import { depositRepo } from '../../db/repositories/depositRepo.js';
 import { merkleTree } from '../../zk/merkleTree.js';
 import { logger } from '../../utils/logger.js';
+import { isCommitmentInserted, getOnChainRoot, getNextLeafIndex } from '../../relayer/paymasterClient.js';
+import type { Hex } from 'viem';
 
 const DepositSchema = z.object({
   commitment: z.string().startsWith('0x').length(66),
@@ -41,6 +43,16 @@ const poolRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
+    // Verify the commitment exists on-chain before accepting it
+    const onChain = await isCommitmentInserted(commitment as Hex).catch(() => false);
+    if (!onChain) {
+      return reply.status(400).send({
+        error: 'COMMITMENT_NOT_ON_CHAIN',
+        message: 'This commitment has not been inserted into the on-chain GhostPool yet.',
+        details: { commitment },
+      });
+    }
+
     // Insert into Merkle tree
     const commitment256 = BigInt(commitment);
     const { root: newRoot, leafIndex } = await merkleTree.insert(commitment256);
@@ -67,10 +79,12 @@ const poolRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET /v1/pool/status
   fastify.get('/pool/status', async (_request, reply) => {
-    const [totalDeposits, nextLeafIndex, root] = await Promise.all([
+    const [totalDeposits, nextLeafIndex, root, onChainRoot, onChainLeafIndex] = await Promise.all([
       depositRepo.countTotal(),
       Promise.resolve(merkleTree.getNextIndex()),
       Promise.resolve(merkleTree.getCurrentRoot()),
+      getOnChainRoot().catch(() => null),
+      getNextLeafIndex().catch(() => null),
     ]);
 
     const merkleRootHex = '0x' + root.toString(16).padStart(64, '0');
@@ -81,6 +95,10 @@ const poolRoutes: FastifyPluginAsync = async (fastify) => {
       merkleRoot: merkleRootHex,
       merkleTreeHeight: Number(process.env['MERKLE_TREE_HEIGHT'] ?? 20),
       anonymitySetSize: nextLeafIndex,
+      onChain: {
+        merkleRoot: onChainRoot ?? null,
+        nextLeafIndex: onChainLeafIndex ?? null,
+      },
     });
   });
 

@@ -11,7 +11,7 @@ import { nullifierRepo } from '../../db/repositories/nullifierRepo.js';
 import { operationRepo } from '../../db/repositories/operationRepo.js';
 import { enqueueRelayJob } from '../../relayer/queue.js';
 import { aspCheckBatch } from '../../compliance/asp.js';
-import { isKnownRoot, checkContractHealth } from '../../relayer/paymasterClient.js';
+import { isKnownRoot, isNullifierSpentOnChain } from '../../relayer/paymasterClient.js';
 import { validatePaymasterAddress, validateChainId } from '../../relayer/userOpBuilder.js';
 import { logger } from '../../utils/logger.js';
 import type { Hex } from 'viem';
@@ -73,12 +73,22 @@ const relayRoutes: FastifyPluginAsync = async (fastify) => {
 
       const { merkleRoot, nullifierHash } = signals;
 
-      // ── Nullifier double-spend check ──────────────────────────────────────
+      // ── Nullifier double-spend check (local DB) ───────────────────────────
       const alreadySpent = await nullifierRepo.isSpent(nullifierHash);
       if (alreadySpent) {
         return reply.status(400).send({
           error: 'PROOF_ALREADY_SPENT',
           message: 'This nullifier has already been used.',
+          details: { nullifierHash },
+        });
+      }
+
+      // ── Nullifier double-spend check (on-chain) ───────────────────────────
+      const spentOnChain = await isNullifierSpentOnChain(nullifierHash as Hex).catch(() => false);
+      if (spentOnChain) {
+        return reply.status(400).send({
+          error: 'PROOF_ALREADY_SPENT_ON_CHAIN',
+          message: 'This nullifier has already been spent on-chain.',
           details: { nullifierHash },
         });
       }
