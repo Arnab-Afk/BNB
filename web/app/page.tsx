@@ -158,43 +158,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Live Stats Section */}
-        <section className="container mx-auto px-6 py-24">
-          <div className="bg-[#f3f4f6] border border-[#e5e7eb] p-12">
-            <div className="flex flex-col md:flex-row justify-between items-end">
-              <div className="mb-8 md:mb-0">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">
-                  Network Activity
-                </h4>
-                <div className="text-4xl md:text-6xl font-bold tracking-tighter">
-                  Total Volume Shielded:{" "}
-                  <span className="text-purple-500">$1.42B+</span>
-                </div>
-              </div>
-              <div className="w-full md:w-64 h-24">
-                <svg className="w-full h-full" viewBox="0 0 200 80">
-                  <path
-                    d="M0 70 L20 65 L40 68 L60 50 L80 55 L100 30 L120 35 L140 15 L160 20 L180 5 L200 10"
-                    fill="none"
-                    stroke="#a855f7"
-                    strokeWidth={2}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  <path
-                    d="M0 70 L20 65 L40 68 L60 50 L80 55 L100 30 L120 35 L140 15 L160 20 L180 5 L200 10 V80 H0 Z"
-                    fill="#a855f7"
-                    fillOpacity={0.1}
-                  />
-                </svg>
-                <div className="flex justify-between mt-2 text-[10px] text-gray-400 font-bold uppercase">
-                  <span>24H Volume</span>
-                  <span>+12.4%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* How It Works — 3 Steps */}
         <section className="border-y border-[#e5e7eb] bg-white">
           <div className="container mx-auto px-6 py-24">
