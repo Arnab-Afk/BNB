@@ -1,65 +1,132 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import { FlickeringGrid } from "@/components/ui/flickering-grid";
+import DepositView from "./components/DepositView";
+import RelayView from "./components/RelayView";
+import RailgunView from "./components/RailgunView";
+import ScoreView from "./components/ScoreView";
+import ComplianceView from "./components/ComplianceView";
+
+const TABS = [
+  { id: "deposit", label: "Deposit", tag: "4.1", desc: "Ghost Pool" },
+  { id: "relay", label: "Relay", tag: "4.1", desc: "ZK + ERC-4337" },
+  { id: "railgun", label: "Railgun", tag: "4.2", desc: "Shield / Unshield" },
+  { id: "score", label: "Score", tag: "4.3", desc: "Privacy Rating" },
+  { id: "compliance", label: "Compliance", tag: "0xbow", desc: "ASP + POI" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<TabId>("deposit");
+  const [connected, setConnected] = useState(false);
+
+  const active = TABS.find((t) => t.id === activeTab)!;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="h-screen flex flex-col bg-white overflow-hidden relative">
+      {/* Flickering grid background */}
+      <div className="fixed inset-0 -z-10">
+        <FlickeringGrid
+          squareSize={4}
+          gridGap={6}
+          flickerChance={0.15}
+          color="#000000"
+          maxOpacity={0.06}
+          className="w-full h-full"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+      </div>
+
+      {/* Top header */}
+      <header className="shrink-0 border-b border-[#e5e7eb] bg-white/80 backdrop-blur-md z-50 flex items-center justify-between px-6 h-14">
+        <div className="flex items-center gap-3">
+          <span className="font-(family-name:--font-pixel) text-sm tracking-tight">GHOST</span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-purple-500 border border-purple-500 px-1.5 py-0.5">
+            DAPP
+          </span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
+        <div className="flex items-center gap-6">
+          <a href="/" className="text-xs font-medium text-gray-500 hover:text-black transition-colors hidden sm:block">
+            Landing ↗
           </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => setConnected((c) => !c)}
+            className={`text-xs font-bold uppercase tracking-widest px-5 py-2 btn-brutalist transition-all ${
+              connected ? "bg-black text-white" : "bg-white text-black"
+            }`}
           >
-            Documentation
-          </a>
+            {connected ? "0xab...3f9e" : "Connect"}
+          </button>
         </div>
-      </main>
+      </header>
+
+      {/* Body: sidebar + content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left sidebar */}
+        <aside className="w-56 shrink-0 border-r border-[#e5e7eb] flex flex-col bg-white/80 backdrop-blur-md">
+          <nav className="flex flex-col flex-1 pt-1">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full text-left px-5 py-4 border-b border-[#e5e7eb] transition-all relative ${
+                  activeTab === tab.id
+                    ? "bg-black text-white"
+                    : "bg-transparent text-black hover:bg-[#f3f4f6]"
+                }`}
+              >
+                {activeTab === tab.id && (
+                  <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-purple-500" />
+                )}
+                <div className="text-xs font-bold uppercase tracking-widest mb-0.5">
+                  {tab.label}
+                </div>
+                <div className={`text-[10px] uppercase tracking-wider ${activeTab === tab.id ? "text-purple-400" : "text-gray-400"}`}>
+                  {tab.desc}
+                </div>
+              </button>
+            ))}
+          </nav>
+
+          {/* Sidebar footer */}
+          <div className="p-5 border-t border-[#e5e7eb]">
+            <div className="font-(family-name:--font-pixel) text-[8px] text-gray-300 leading-relaxed mb-3">
+              GHOST<br />PROTOCOL
+            </div>
+            <div className="flex gap-4">
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer"
+                className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-black transition-colors">
+                GitHub
+              </a>
+              <a href="#" className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-black transition-colors">
+                Docs
+              </a>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main content area */}
+        <main className="flex-1 overflow-auto">
+          {/* Page title bar */}
+          <div className="border-b border-[#e5e7eb] px-8 py-4 flex items-center gap-4 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-purple-500 border border-purple-500 px-2 py-1 font-(family-name:--font-pixel)">
+              {active.tag}
+            </span>
+            <h1 className="text-base font-bold tracking-tight">{active.label}</h1>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">{active.desc}</span>
+          </div>
+
+          {/* Tab panels */}
+          <div>
+            {activeTab === "deposit" && <DepositView />}
+            {activeTab === "relay" && <RelayView />}
+            {activeTab === "railgun" && <RailgunView />}
+            {activeTab === "score" && <ScoreView />}
+            {activeTab === "compliance" && <ComplianceView />}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
