@@ -337,13 +337,13 @@ export default function Home() {
               <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-8">What you get</div>
               <div className="space-y-5">
                 {[
-                  { icon: "⚡", title: "In-browser ZK proving", desc: "WASM Groth16 circuit — proofs generated locally, never sent to any server." },
-                  { icon: "🔗", title: "ERC-4337 UserOp builder", desc: "Dual ZK proof packed into paymasterAndData automatically." },
-                  { icon: "👻", title: "Chrome Extension", desc: "Auto-routes every MetaMask transaction through Ghost. Privacy without thinking." },
-                  { icon: "🔍", title: "Viewing key export", desc: "Let auditors see everything with a single key. The chain still sees nothing." },
+                  { icon: "ZK", title: "In-browser ZK proving", desc: "WASM Groth16 circuit — proofs generated locally, never sent to any server." },
+                  { icon: "OP", title: "ERC-4337 UserOp builder", desc: "Dual ZK proof packed into paymasterAndData automatically." },
+                  { icon: "EXT", title: "Chrome Extension", desc: "Auto-routes every MetaMask transaction through Ghost. Privacy without thinking." },
+                  { icon: "KEY", title: "Viewing key export", desc: "Let auditors see everything with a single key. The chain still sees nothing." },
                 ].map((f) => (
                   <div key={f.title} className="flex gap-4">
-                    <span className="text-xl mt-0.5">{f.icon}</span>
+                    <span className="font-(family-name:--font-pixel) text-[8px] text-purple-500 mt-1 w-8 shrink-0 leading-tight">{f.icon}</span>
                     <div>
                       <div className="font-bold text-sm mb-1">{f.title}</div>
                       <div className="text-gray-500 text-xs leading-relaxed">{f.desc}</div>
