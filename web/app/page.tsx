@@ -1,6 +1,6 @@
 export default function Home() {
   return (
-    <div className="font-(family-name:--font-jetbrains-mono) text-black antialiased">
+    <div className="font-(family-name:--font-manrope) text-black antialiased">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-[#e5e7eb]">
         <nav className="container mx-auto px-6 h-20 flex items-center justify-between">
