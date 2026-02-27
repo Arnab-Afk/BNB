@@ -144,7 +144,7 @@ contract GhostPool is IGhostPool, Ownable, ReentrancyGuard {
         }
 
         // Set the initial root (tree full of zeros).
-        roots[0] = _initialRoot(_hasher, _levels, zeros);
+        roots[0] = _initialRoot(_hasher, _levels);
     }
 
     // ─── IGhostPool: State Queries ────────────────────────────────────────────
@@ -313,13 +313,9 @@ contract GhostPool is IGhostPool, Ownable, ReentrancyGuard {
     }
 
     /// @dev Compute the initial root from a tree full of zeros.
-    ///      Called once in the constructor.
-    function _initialRoot(
-        IPoseidonHasher _hasher,
-        uint32 _levels,
-        bytes32[MAX_TREE_HEIGHT] storage _zeros
-    ) private returns (bytes32 root) {
-        root = _zeros[0];
+    ///      Called once in the constructor after zeros[] has been populated.
+    function _initialRoot(IPoseidonHasher _hasher, uint32 _levels) private view returns (bytes32 root) {
+        root = zeros[0];
         for (uint32 i = 1; i < _levels; ) {
             root = _hasher.poseidon(root, root);
             unchecked { ++i; }

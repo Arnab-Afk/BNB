@@ -12,5 +12,5 @@ interface IPoseidonHasher {
     /// @param left     Left 32-byte field element (a Merkle tree node).
     /// @param right    Right 32-byte field element (a Merkle tree node).
     /// @return hash    The resulting 32-byte field element.
-    function poseidon(bytes32 left, bytes32 right) external pure returns (bytes32 hash);
+    function poseidon(bytes32 left, bytes32 right) external view returns (bytes32 hash);
 }
