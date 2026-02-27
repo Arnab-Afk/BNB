@@ -44,7 +44,7 @@ export default function Home() {
 
       <main>
         {/* Hero Section */}
-        <section id="hero" className="relative min-h-[calc(100vh-56px)] flex items-center overflow-hidden">
+        <section id="hero" className="relative min-h-[calc(100vh-56px)] flex items-center overflow-hidden bg-white">
           <div className="container mx-auto px-6 py-24 relative z-10">
           <div className="max-w-2xl">
             <div className="inline-block border border-black px-3 py-1 mb-8 text-[10px] uppercase font-bold tracking-[0.2em] bg-white">
@@ -105,7 +105,7 @@ export default function Home() {
           </div>
 
           {/* Globe — anchored to bottom-right corner, zoomed in */}
-          <div className="absolute bottom-0 right-0 w-225 h-225 hidden lg:block pointer-events-none">
+          <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-250 h-250 hidden lg:block pointer-events-none">
             <GlobeHero />
           </div>
         </section>
