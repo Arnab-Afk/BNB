@@ -195,6 +195,165 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* How It Works — 3 Steps */}
+        <section className="border-y border-[#e5e7eb] bg-white">
+          <div className="container mx-auto px-6 py-24">
+            <div className="mb-16">
+              <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 mb-4">How It Works</h2>
+              <p className="text-3xl md:text-4xl font-light tracking-tight max-w-xl">
+                Three steps to <span className="font-bold">complete invisibility</span>.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-black">
+              {/* Step 1 */}
+              <div className="p-10 border-b md:border-b-0 md:border-r border-black">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-6">Step 01 — Deposit</div>
+                <h3 className="text-lg font-bold mb-3">Deposit USDC into Ghost Pool</h3>
+                <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                  From any wallet, deposit 1 / 10 / 100 / 1000 USDC into the Poseidon Merkle pool. Receive a cryptographic <span className="font-semibold text-black">Note</span> — your private key to gas.
+                </p>
+                <div className="text-[10px] text-purple-500 font-bold uppercase tracking-widest">OFAC screened on entry →</div>
+              </div>
+              {/* Step 2 */}
+              <div className="p-10 border-b md:border-b-0 md:border-r border-black">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-6">Step 02 — Relay</div>
+                <h3 className="text-lg font-bold mb-3">Transact from a fresh wallet</h3>
+                <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                  From a fresh wallet with zero BNB, paste your Note. A ZK proof is generated locally — it never leaves your browser. Ghost Paymaster pays gas. Zero on-chain link.
+                </p>
+                <div className="text-[10px] text-purple-500 font-bold uppercase tracking-widest">ERC-4337 · Dual ZK proof →</div>
+              </div>
+              {/* Step 3 */}
+              <div className="p-10">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-6">Step 03 — Private DeFi</div>
+                <h3 className="text-lg font-bold mb-3">Shield into Railgun</h3>
+                <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                  Ghost Paymaster sponsors Railgun shield/unshield gas — the first of its kind. Swap, transfer, and exit with a Proof of Innocence. Clean funds, clean conscience.
+                </p>
+                <div className="text-[10px] text-purple-500 font-bold uppercase tracking-widest">Proof of Innocence on exit →</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Compliance Section */}
+        <section className="container mx-auto px-6 py-24">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-start">
+            <div className="md:col-span-5">
+              <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 mb-4">Compliance</h2>
+              <p className="text-3xl md:text-4xl font-light leading-snug tracking-tight mb-8">
+                Privacy that passes <span className="font-bold">regulatory scrutiny</span>.
+              </p>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Ghost implements the <span className="font-semibold text-black">0xbow ASP model</span> — the gold standard for compliant privacy protocols. Not just privacy. Provable innocence.
+              </p>
+            </div>
+            <div className="md:col-span-7 space-y-0 border border-black">
+              {[
+                { label: "Pool Membership Proof", desc: "ZK-prove you deposited without revealing which UTXO. Groth16 on-chain verification.", tag: "Circom + Groth16" },
+                { label: "ASP Clean Set Proof", desc: "0xbow-attested: your commitment exists in the OFAC-clean Merkle root. Not just in the pool.", tag: "0xbow Compliant" },
+                { label: "OFAC SDN Screening", desc: "Every deposit and relay address is checked against the OFAC SDN list, synced every 60 minutes.", tag: "Auto-Synced" },
+                { label: "Proof of Innocence", desc: "On Railgun exit, ZK-prove your complete transaction history never touched sanctioned funds.", tag: "Railgun POI" },
+                { label: "Viewing Keys", desc: "Share your viewing key with regulators. They see everything. The chain still sees nothing.", tag: "Auditor Ready" },
+              ].map((item, i, arr) => (
+                <div key={i} className={`flex items-start justify-between p-6 bg-white ${i < arr.length - 1 ? "border-b border-black" : ""}`}>
+                  <div className="flex-1 pr-8">
+                    <div className="font-bold text-sm mb-1">{item.label}</div>
+                    <div className="text-gray-500 text-xs leading-relaxed">{item.desc}</div>
+                  </div>
+                  <div className="shrink-0 border border-purple-500 text-purple-500 text-[9px] font-bold uppercase tracking-widest px-2 py-1">{item.tag}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Privacy Score Section */}
+        <section className="border-y border-[#e5e7eb] bg-white">
+          <div className="container mx-auto px-6 py-24">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 mb-4">Privacy Score</h2>
+                <p className="text-3xl md:text-4xl font-light leading-snug tracking-tight mb-6">
+                  Know your <span className="font-bold">exposure</span>. Own your privacy.
+                </p>
+                <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                  A 0–100 on-chain exposure meter for every wallet. Shareable. Viral. Ghost users score higher — because privacy is provable.
+                </p>
+                <button className="bg-black text-white px-6 py-3 text-xs font-bold uppercase tracking-widest btn-brutalist">
+                  Check Your Score →
+                </button>
+              </div>
+              {/* Score visual */}
+              <div className="border border-black p-10 bg-[#f3f4f6]">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-6">Sample Wallet Score</div>
+                <div className="flex items-end gap-4 mb-6">
+                  <span className="text-8xl font-bold tracking-tighter text-purple-500">87</span>
+                  <span className="text-gray-400 text-sm font-medium mb-3">/ 100</span>
+                </div>
+                <div className="w-full bg-[#e5e7eb] h-2 mb-6">
+                  <div className="bg-purple-500 h-2" style={{ width: "87%" }} />
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  {[
+                    { label: "Deposits Shielded", val: "3" },
+                    { label: "Relay Txs", val: "12" },
+                    { label: "Railgun Shields", val: "2" },
+                    { label: "OFAC Clean", val: "✓" },
+                  ].map((s) => (
+                    <div key={s.label} className="bg-white border border-[#e5e7eb] p-3">
+                      <div className="text-gray-400 uppercase tracking-widest text-[9px] mb-1">{s.label}</div>
+                      <div className="font-bold">{s.val}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SDK / Developer Section */}
+        <section className="container mx-auto px-6 py-24">
+          <div className="mb-12">
+            <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 mb-4">Developer SDK</h2>
+            <p className="text-3xl md:text-4xl font-light tracking-tight max-w-2xl">
+              One component. <span className="font-bold">Ghost Mode</span> for any dApp.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border border-black">
+            {/* Code block */}
+            <div className="bg-black text-white p-10 font-mono text-xs leading-relaxed border-b md:border-b-0 md:border-r border-[#333]">
+              <div className="text-gray-500 mb-4 text-[10px] uppercase tracking-widest">Option A — Drop-in</div>
+              <div><span className="text-purple-400">import</span> {"{ PrivacyProvider }"} <span className="text-purple-400">from</span> <span className="text-green-400">&apos;@ghost-privacy/sdk/react&apos;</span></div>
+              <div className="mt-4"><span className="text-gray-500">// Wrap your existing app</span></div>
+              <div className="mt-2">{"<"}<span className="text-purple-400">PrivacyProvider</span> <span className="text-yellow-400">chainId</span>={"{56}"}{">"}</div>
+              <div className="pl-4 text-gray-400">{"<YourExistingDApp />"}</div>
+              <div>{"</"}<span className="text-purple-400">PrivacyProvider</span>{">"}</div>
+              <div className="mt-4 text-gray-500 text-[10px]">↑ Users get a Ghost Mode toggle automatically</div>
+            </div>
+            {/* Features list */}
+            <div className="bg-white p-10">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-8">What you get</div>
+              <div className="space-y-5">
+                {[
+                  { icon: "⚡", title: "In-browser ZK proving", desc: "WASM Groth16 circuit — proofs generated locally, never sent to any server." },
+                  { icon: "🔗", title: "ERC-4337 UserOp builder", desc: "Dual ZK proof packed into paymasterAndData automatically." },
+                  { icon: "👻", title: "Chrome Extension", desc: "Auto-routes every MetaMask transaction through Ghost. Privacy without thinking." },
+                  { icon: "🔍", title: "Viewing key export", desc: "Let auditors see everything with a single key. The chain still sees nothing." },
+                ].map((f) => (
+                  <div key={f.title} className="flex gap-4">
+                    <span className="text-xl mt-0.5">{f.icon}</span>
+                    <div>
+                      <div className="font-bold text-sm mb-1">{f.title}</div>
+                      <div className="text-gray-500 text-xs leading-relaxed">{f.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Footer */}
