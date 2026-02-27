@@ -1,7 +1,7 @@
 # 👻 Ghost Paymaster — Backend
 
 > **Privacy-Preserving Gas Relayer for BNB Chain**
-> Built for **BNB Hack 2026 · Privacy Solutions Track (PS4)**
+> Built for **BNB Chain X YZI Labs Hack Bengaluru · Track 4 — Privacy Solutions (4.1 · 4.2 · 4.3)**
 
 The Ghost Paymaster backend is the off-chain infrastructure that powers the privacy relay network. It acts as the **Broadcaster** — picking up signed UserOperations from anonymous wallets, verifying their attached Zero-Knowledge proofs, and submitting them to the BNB Chain bundler — all without ever linking the user's KYC'd source wallet to their private wallet.
 
@@ -701,4 +701,4 @@ MIT — see [LICENSE](../LICENSE)
 
 ---
 
-*Built with ❤️ for BNB Hack 2026 · Privacy Solutions Track (PS4)*
+*Built with ❤️ for BNB Chain X YZI Labs Hack Bengaluru · Track 4 — Privacy Solutions (4.1 · 4.2 · 4.3)*

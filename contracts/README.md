@@ -1,7 +1,7 @@
 # 📜 Ghost Paymaster — Smart Contracts
 
 > **Solidity Contracts for the Privacy-Preserving Gas Relayer on BNB Chain**
-> Built for **BNB Hack 2026 · Privacy Solutions Track (PS4)**
+> Built for **BNB Chain X YZI Labs Hack Bengaluru · Track 4 — Privacy Solutions (4.1 · 4.2 · 4.3)**
 
 This module contains all on-chain logic for the Ghost Paymaster system:
 the **ERC-4337 Paymaster**, the **ZK-backed Privacy Pool**, the **on-chain Groth16 Verifier**, and supporting utilities.
@@ -657,4 +657,4 @@ MIT — see [LICENSE](../LICENSE)
 
 ---
 
-*Built with ❤️ for BNB Hack 2026 · Privacy Solutions Track (PS4)*
+*Built with ❤️ for BNB Chain X YZI Labs Hack Bengaluru · Track 4 — Privacy Solutions (4.1 · 4.2 · 4.3)*
