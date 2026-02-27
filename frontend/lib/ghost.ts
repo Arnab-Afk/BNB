@@ -29,7 +29,7 @@ export interface GhostNote {
 }
 
 export interface DepositProgress {
-    step: "minting" | "approving" | "committing" | "done" | "error";
+    step: "checking" | "approving" | "committing" | "done" | "error";
     message: string;
     txHash?: string;
     note?: string;
@@ -245,8 +245,15 @@ export async function deposit(
         const decimals = await erc20.decimals();
         const amountWei = ethers.parseUnits(amount, decimals);
 
-        onProgress({ step: "minting", message: `Minting ${amount} ${token} test tokens…` });
-        await (await erc20.mint(address, amountWei)).wait();
+        onProgress({ step: "checking", message: `Checking ${token} balance…` });
+        const balance = await erc20.balanceOf(address);
+        if (balance < amountWei) {
+            const have = ethers.formatUnits(balance, decimals);
+            throw new Error(
+                `Insufficient ${token} balance. You have ${have} ${token}, need ${amount}.\n` +
+                `Get testnet USDC from the PancakeSwap testnet faucet or bridge from another testnet.`
+            );
+        }
 
         onProgress({ step: "approving", message: `Approving GhostPool to spend ${amount} ${token}…` });
         await (await erc20.approve(ADDRESSES.GhostPool, amountWei)).wait();

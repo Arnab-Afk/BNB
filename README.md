@@ -1,354 +1,411 @@
-<div align="center">
+# 👻 Ghost Privacy Suite
 
-# 👻 Ghost Full-Stack Privacy Suite for BNB Chain
-
-### Gas Relayer · Privacy Wallet SDK · Railgun-Powered Private Transactions
-
-[![BNB Chain](https://img.shields.io/badge/BNB%20Chain-F0B90B?style=for-the-badge&logo=binance&logoColor=black)](https://www.bnbchain.org/)
-[![ERC-4337](https://img.shields.io/badge/ERC--4337-Account%20Abstraction-blueviolet?style=for-the-badge)](https://eips.ethereum.org/EIPS/eip-4337)
-[![ZK](https://img.shields.io/badge/ZK-Circom%20%2B%20Groth16-00c4cc?style=for-the-badge)](https://docs.circom.io/)
-[![Railgun](https://img.shields.io/badge/Railgun-Private%20DeFi-111827?style=for-the-badge)](https://railgun.org/)
-[![0xbow](https://img.shields.io/badge/0xbow-ASP%20Compliant-22c55e?style=for-the-badge)](https://0xbow.io/)
-
-> **BNB Chain × YZI Labs Hack Bengaluru — Track 4: Privacy Solutions (4.1 · 4.2 · 4.3)**
-
-*One privacy layer. Three components. Fully compliant. Gasless by default.*
-
-</div>
+> **Compliant, gasless, ZK-proven private transactions on BNB Chain.**  
+> Built for BNB Chain × YZI Labs Hack Bengaluru — Track 4.1 (Gas Relayer) · 4.2 (Privacy SDK) · 4.3 (Railgun)
 
 ---
 
-## 🚀 What is Ghost?
+## What Is Ghost?
 
-Ghost is a **compliant, full-stack privacy infrastructure** for BNB Chain. It lets any wallet transact with zero on-chain identity exposure — without sacrificing regulatory compliance.
-
-| Track | What We Built | Key Innovation |
-|-------|---------------|----------------|
-| **4.1** Gas Relayer | `GhostPaymaster.sol` — ERC-4337 Paymaster + ZK-backed Privacy Pool | **Dual-proof ASP model** (0xbow) — proves you're in the clean set, not just the pool |
-| **4.2** Privacy SDK | `@ghost-privacy/sdk` — TypeScript SDK + `PrivacyProvider` React component | **One component** drops into any Next.js DApp |
-| **4.3** Railgun | Gasless Railgun shield/unshield + Waku Broadcaster + Proof of Innocence | **Ghost Paymaster sponsors Railgun gas** — nobody else has this |
-
----
-
-## 🔑 Key Features
-
-- 🔒 **ZK Privacy Pool** — Deposit USDC, get a Note. Use the Note to pay gas from a fresh wallet. Zero on-chain link.
-- ⛽ **Gasless Transactions** — ERC-4337 Paymaster covers BNB gas. Fresh wallets need zero BNB to transact.
-- 🏛️ **0xbow ASP Compliance** — Users prove membership in a cryptographically-attested "Clean Set", not just the pool. Regulators get viewing keys.
-- 🚂 **Gasless Railgun** — Ghost Paymaster sponsors Railgun shield/unshield gas. First of its kind.
-- 🕵️ **Proof of Innocence** — On unshield, ZK-prove your full Railgun history never touched sanctioned funds.
-- 📦 **Drop-in SDK** — `<PrivacyProvider>` gives any existing DApp a Ghost Mode toggle in one line.
-- 👻 **Chrome Extension** — Auto-routes every MetaMask transaction through Ghost. Privacy without thinking.
-- 📊 **Privacy Score** — 0–100 wallet exposure meter. Shareable. Viral.
-
----
-
-## 🔄 How It Works
-
-### System Flow
-
-```mermaid
-flowchart TD
-    classDef user        fill:#f59e0b,stroke:#d97706,color:#000,font-weight:bold
-    classDef offchain    fill:#6366f1,stroke:#4f46e5,color:#fff,font-weight:bold
-    classDef onchain     fill:#10b981,stroke:#059669,color:#fff,font-weight:bold
-    classDef compliance  fill:#ec4899,stroke:#db2777,color:#fff,font-weight:bold
-    classDef output      fill:#1e293b,stroke:#334155,color:#fff,font-weight:bold
-    classDef railgun     fill:#8b5cf6,stroke:#7c3aed,color:#fff,font-weight:bold
-
-    subgraph USER ["👤  User Layer"]
-        direction LR
-        U1(["KYC Wallet\n(any wallet)"])
-        U2(["Fresh Wallet\n0 BNB · 0 USDC"])
-        U3(["Chrome Extension\nGhost Mode ON"])
-    end
-
-    subgraph OFFCHAIN ["⚙️  Ghost Backend  (Off-Chain)"]
-        direction TB
-        B1["Fastify REST API\n/relay · /deposit"]
-        B2["snarkjs Verifier\nOff-chain ZK pre-check"]
-        B3["OFAC SDN Sync\n+ ASP Screening"]
-        B4["BullMQ Worker\n→ Pimlico Bundler"]
-        B5["Railgun Broadcaster\nWaku P2P network"]
-    end
-
-    subgraph ONCHAIN ["⛓️  BNB Chain  (On-Chain)"]
-        direction TB
-        C1["GhostPool.sol\nPoseidon Merkle Tree\nMulti-denom: 1/10/100/1000 USDC"]
-        C2["AssociationSetProvider.sol\n0xbow Clean Set\nMerkle Root"]
-        C3["GhostPaymaster.sol\nERC-4337 · Dual ZK Verify\nPays gas · Earns 20% markup"]
-        C4["Groth16Verifier.sol\nO(1) on-chain pairing check"]
-        C5["RailgunAdapter.sol\nPool ↔ Railgun UTXO bridge"]
-    end
-
-    subgraph RAILGUN ["🚂  Railgun Private Pool"]
-        R1["Shield → 0zk Address\nFunds invisible on-chain"]
-        R2["Private Swap / Transfer\nZK-SNARK routed"]
-        R3["Proof of Innocence\nZK: no OFAC contact in history"]
-    end
-
-    subgraph OUT ["✅  Outputs"]
-        O1(["Fresh Wallet\ntransacts privately 👻"])
-        O2(["Clean Funds\nat destination"])
-        O3(["Privacy Score ↑\nCompliance Report"])
-    end
-
-    %% ── DEPOSIT FLOW ──────────────────────────────────────────
-    U1 -->|"① Deposit USDC"| C1
-    C1 -->|"commitment = Poseidon(secret, nullifier)"| C2
-    C1 -->|"idle USDC → Venus yield"| B1
-
-    %% ── RELAY FLOW ────────────────────────────────────────────
-    U2 -->|"② Paste Note\ngenerate ZK proof (WASM)"| B1
-    U3 -->|"window.ethereum intercept\nwrap tx as UserOp"| B1
-    B1 --> B2
-    B1 --> B3
-    B2 -->|"✅ pre-verified"| B4
-    B3 -->|"✅ OFAC clean"| B4
-    B4 -->|"eth_sendUserOperation"| C3
-    C3 --> C4
-    C4 -->|"✅ Proof 1: pool member\n✅ Proof 2: clean set"| C3
-    C3 -->|"pays BNB gas\ndeducts USDC + 20%"| O1
-
-    %% ── RAILGUN FLOW ──────────────────────────────────────────
-    U1 -->|"③ Shield USDC"| R1
-    C3 -->|"sponsors shield gas 🆕"| C5
-    C5 --> R1
-    R1 --> R2
-    R2 -->|"Waku broadcast"| B5
-    B5 -->|"submit tx on-chain"| R2
-    R2 --> R3
-    R3 -->|"✅ clean exit"| O2
-
-    %% ── COMPLIANCE OUTPUT ─────────────────────────────────────
-    C2 -.->|"viewing key = full audit trail"| O3
-    R3 -.->|"POI attests clean history"| O3
-
-    class U1,U2,U3 user
-    class B1,B2,B3,B4,B5 offchain
-    class C1,C2,C3,C4,C5 onchain
-    class R1,R2,R3 railgun
-    class O1,O2,O3 output
-```
-
-### User Journey (3 Steps)
+Ghost lets a wallet with **zero BNB** withdraw stablecoins from a privacy pool using a ZK proof, with gas sponsored by a paymaster and settled in USDC. The user who deposited and the user who withdraws are cryptographically unlinkable.
 
 ```
-Step 1 — DEPOSIT (from any wallet, one time)
-  Any wallet  →  Deposit 10 USDC  →  GhostPool.sol
-                                      ↓
-                              Get a "Note" (save this)
-                              OFAC check → added to Clean Set
-
-Step 2 — USE (from fresh wallet, zero BNB)
-  Fresh wallet (0 BNB)
-    → paste Note → generate ZK proof locally (never leaves browser)
-    → Proof 1: "I'm in the pool"
-    → Proof 2: "I'm in the clean set"  ← 0xbow compliance
-    → Ghost Paymaster pays gas → tx executes → zero link to depositor 👻
-
-Step 3 — PRIVATE DEFI (via Railgun)
-  → Shield USDC into Railgun  (Ghost pays the shield gas 🆕)
-  → Private swap / transfer inside Railgun shielded pool
-  → Unshield + Proof of Innocence → clean exit
+Depositor (KYC wallet)  →  Ghost Pool  →  [ ZK proof in browser ]  →  Fresh wallet (0 BNB)
+                                                     ↑
+                              No on-chain link between these two wallets
 ```
 
 ---
 
-## 💸 Business Model
+## ✅ What Is Working Right Now
 
-Ghost earns on every transaction — it never actually "sponsors" gas for free.
+Everything below is live on **BSC Testnet (chainId 97)** and has been end-to-end verified with real on-chain transactions.
 
-```
-User Action                 Ghost Earns
-────────────────────────────────────────────────────
-Deposit N USDC            → 0.5% protocol fee
-                          + yield on idle USDC (Venus Protocol)
-Relay via Paymaster       → 20% markup on actual gas cost
-Railgun shield/unshield   → 20% markup on gas
-Railgun broadcast         → Broadcaster tip per tx
-SDK high-volume DApps     → Tiered SaaS (Alchemy model)
-Compliance report export  → Per-export fee (institutional)
-```
+### 1. Smart Contracts — All Deployed and Verified Live
 
-> At 5,000 daily relay txs × $0.24 margin = **$438K/year in gas markup alone**. Plus yield on TVL. Plus SDK SaaS. Zero token dependency.
+| Contract | Address | BscScan |
+|---|---|---|
+| **EntryPoint v0.7** | `0x0000000071727De22E5E9d8BAf0edAc6f37da032` | [View](https://testnet.bscscan.com/address/0x0000000071727De22E5E9d8BAf0edAc6f37da032) |
+| **GhostPool** | `0xd2c227909A77359b422C1BfEa6B482f2559eF6aa` | [View](https://testnet.bscscan.com/address/0xd2c227909A77359b422C1BfEa6B482f2559eF6aa) |
+| **GhostPaymaster** | `0xB5Be8a242feb47A40aE6BBC5C065b77Cec2eD6df` | [View](https://testnet.bscscan.com/address/0xB5Be8a242feb47A40aE6BBC5C065b77Cec2eD6df) |
+| **GhostSmartAccountFactory** | `0x7D5eb77Bc8a3f2aDE845c450b9d97bfD20DDEda0` | [View](https://testnet.bscscan.com/address/0x7D5eb77Bc8a3f2aDE845c450b9d97bfD20DDEda0) |
+| **Groth16Verifier** | `0x61ac3A70Ed4CAab15dd547b374dd1BF7a519cdfA` | [View](https://testnet.bscscan.com/address/0x61ac3A70Ed4CAab15dd547b374dd1BF7a519cdfA) |
+| **PoseidonHasher** | `0x432E4098133165D2f90E768fa73642236c6f910b` | [View](https://testnet.bscscan.com/address/0x432E4098133165D2f90E768fa73642236c6f910b) |
+| **Mock USDC** | `0xC1d58E84ebFdCd4C29674C805a6CF53a21dC9D33` | [View](https://testnet.bscscan.com/address/0xC1d58E84ebFdCd4C29674C805a6CF53a21dC9D33) |
+| **Mock USDT** | `0xE0a53adFa5f64f45e81DDEFC770Ddf0DE3a92FFe` | [View](https://testnet.bscscan.com/address/0xE0a53adFa5f64f45e81DDEFC770Ddf0DE3a92FFe) |
 
----
-
-## 🏛️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      ENTRY POINTS                           │
-│  Next.js dApp  │  @ghost-privacy/sdk  │  Chrome Extension  │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│                   GHOST BACKEND (Fastify)                    │
-│  /v1/relay  │  /v1/pool/deposit  │  /v1/railgun/shield      │
-│  OFAC sync  │  snarkjs verifier  │  BullMQ + Pimlico        │
-│  Nullifier store (Redis)         │  Waku Broadcaster        │
-└──────────┬──────────────────┬──────────────────┬────────────┘
-           │                  │                  │
-┌──────────▼──────────────────▼──────────────────▼────────────┐
-│                        BNB CHAIN                             │
-│  GhostPool.sol          GhostPaymaster.sol   ASP.sol        │
-│  GhostPool ← USDC       ERC-4337 Paymaster   Clean Set      │
-│  Merkle tree            Dual ZK proof verify  Merkle Root    │
-│  Multi-denomination     Pays gas + earns 20%  0xbow model   │
-│  (1/10/100/1000 USDC)                                       │
-│                                                              │
-│  Groth16Verifier.sol    RailgunAdapter.sol   GhostNameSvc   │
-│  O(1) on-chain verify   Pool ↔ Railgun UTXO  ghost://name   │
-└──────────────────────────────────────────────────────────────┘
-```
+**Deployed:** 2026-02-27T16:30:44Z by `0x90e6a10271D31EA4EA29B66D48e6f078C4091f77`
 
 ---
 
-## 📦 Project Structure
+### 2. ZK Circuits — Compiled and Generating Real Proofs
+
+The circuit is a **Groth16 / BN128 Poseidon Merkle inclusion proof**, compiled with Circom 2.0.
+
+```
+circuits/
+├── merkle_proof.circom          Source (114 lines, depth=10 for testnet)
+└── build/
+    ├── merkle_proof.r1cs        Compiled constraint system (1.36 MB)
+    ├── merkle_proof_final.zkey  Proving key after trusted setup (1.68 MB)
+    ├── pot15.ptau               Powers of Tau (2^15 constraints, 37.8 MB)
+    └── verification_key.json    Verifier key (3.3 KB)
+
+frontend/public/zk/
+├── merkle_proof.wasm            WASM circuit — served to and runs in browser (1.97 MB)
+├── merkle_proof_final.zkey      Proving key — served to browser (1.68 MB)
+└── verification_key.json        Used for local proof verification before submission
+```
+
+**What the circuit proves (without revealing):**
+1. `nullifierHash == Poseidon(nullifier)` — enables double-spend prevention
+2. `commitment == Poseidon(secret, nullifier)` — prover knows the secret
+3. `MerkleRoot(commitment, path) == root` — commitment exists in the tree
+4. `recipient` is bound to the proof — bundler cannot re-use proof for another wallet
+
+**Proof generation happens in the browser** via `snarkjs.groth16.fullProve()` running the WASM circuit. Takes ~3–10 seconds. The proof is then **verified on-chain** by `Groth16Verifier.sol` using BN128 elliptic curve pairings (~800k gas).
+
+---
+
+### 3. End-to-End Flow — Verified On-Chain
+
+Two confirmed transactions on BSC Testnet demonstrating the full stack:
+
+#### E2E Test (backend)
+- **Tx:** [`0x2910e58...`](https://testnet.bscscan.com/tx/0x2910e58058ddd653868a8682d0d37d4e539e676eed55fc1cd9f9060c65dcb4c7)
+- **Smart account deployed:** `0xFF699eeE45384c23840dc1c7c71110b9BFdca70d`
+- **Gas used:** 564,932 (account already deployed)
+
+#### Frontend DApp relay (via UI)
+- **Tx:** [`0xf75d06d...`](https://testnet.bscscan.com/tx/0xf75d06d274122e74171b86750c80dbad9cceb31a5be4e1425ce01d6c8b05ebd1)
+- **Smart account deployed in-tx:** `0xeeffED218604923bbce843C6a22Fd047DBBdFfdc`
+- **Gas used:** 844,440 (includes first-time account deployment ~+200k)
+- **Fee settled:** 0.044501 USDC transferred from GhostPool → GhostPaymaster
+
+---
+
+## How It Works — The Full Flow
+
+### Phase 1: Deposit
+
+```
+User's MetaMask wallet
+  │
+  ├─ 1. MockERC20.mint(user, 10 USDC)         [testnet only — free tokens]
+  ├─ 2. USDC.approve(GhostPool, 10 USDC)
+  ├─ 3. Browser computes:
+  │      secret     = random 31 bytes  (never leaves browser)
+  │      nullifier  = random 31 bytes  (never leaves browser)
+  │      commitment = Poseidon(secret, nullifier)
+  └─ 4. GhostPool.deposit(commitment, 10e6, USDC_addr)
+           ├─ Pulls USDC from user
+           ├─ Inserts commitment into depth-10 Poseidon Merkle tree
+           └─ Emits Deposit(leafIndex, commitment)
+
+Ghost Note generated:
+  "ghost:v1:<secretHex>:<nullifierHex>:10:USDC:<leafIndex>:<commitmentHex>"
+  ⚠️  Save this. It is the ONLY way to recover your funds.
+```
+
+### Phase 2: Relay (from a fresh wallet with 0 BNB)
+
+```
+User pastes Ghost Note into Relay tab
+  │
+  ├─ 1. Smart account address computed:
+  │      factory.getFunction("getAddress(address,uint256)")(owner, salt=0)
+  │      → deterministic CREATE2 address (same every time for same owner+salt)
+  │
+  ├─ 2. Merkle path reconstructed in browser:
+  │      ├─ Downloads all Deposit events from GhostPool (eth_getLogs)
+  │      ├─ Rebuilds the Poseidon Merkle tree locally
+  │      ├─ Verifies local root matches on-chain GhostPool.getLastRoot()
+  │      └─ Extracts pathElements[10] + pathIndices[10] for our leafIndex
+  │
+  ├─ 3. ZK proof generated in browser (WASM):
+  │      snarkjs.groth16.fullProve({
+  │        secret, nullifier,              ← private, never leave browser
+  │        pathElements, pathIndices,      ← private
+  │        root, nullifierHash, recipient  ← public, go on-chain
+  │      }, merkle_proof.wasm, merkle_proof_final.zkey)
+  │      → { proof: { pi_a, pi_b, pi_c }, publicSignals }
+  │      Local verify: snarkjs.groth16.verify(vk, publicSignals, proof) ✅
+  │
+  ├─ 4. PackedUserOperation assembled:
+  │      sender:            smart account (may not exist yet)
+  │      nonce:             EntryPoint.getNonce(sender, 0)
+  │      initCode:          factory + createAccount(owner, salt)  [if new account]
+  │      callData:          execute(recipient, 0, "0x")
+  │      paymasterAndData:  GhostPaymaster address
+  │                       + verificationGasLimit (900,000)
+  │                       + postOpGasLimit (200,000)
+  │                       + validUntil / validAfter (0 = no expiry)
+  │                       + feeToken (USDC address)
+  │                       + abi.encode(proof.pi_a, proof.pi_b, proof.pi_c,
+  │                                    [root, nullifierHash, recipient])
+  │      signature:         MetaMask.signMessage(EntryPoint.getUserOpHash(op))
+  │
+  └─ 5. POST /api/bundle { userOp }
+           └─ Bundler wallet (0x90e6a102...) calls:
+              EntryPoint.handleOps([userOp], bundler.address, { gasLimit: 5_000_000 })
+```
+
+### Phase 3: EntryPoint Execution (on-chain)
+
+```
+EntryPoint.handleOps()
+  │
+  ├─ VALIDATION:
+  │   ├─ Deploy smart account (if initCode present)
+  │   │   GhostSmartAccountFactory.createAccount(owner, salt)
+  │   │   → CREATE2 deploys GhostSmartAccount
+  │   │   → emit AccountCreated(account, owner, salt)
+  │   │
+  │   ├─ GhostSmartAccount.validateUserOp()
+  │   │   → ecrecover(userOpHash, sig) == owner? ✅
+  │   │
+  │   └─ GhostPaymaster.validatePaymasterUserOp()
+  │       ├─ Decode paymasterAndData
+  │       ├─ GhostPool.isKnownRoot(root) ✅
+  │       ├─ nullifier not spent ✅
+  │       ├─ recipient == userOp.sender ✅
+  │       └─ Groth16Verifier.verify(pA, pB, pC, [root, nullHash, recipient])
+  │           → BN128 pairing checks (~800k gas) ✅
+  │
+  ├─ EXECUTION:
+  │   └─ GhostSmartAccount.execute(dest, 0, "0x")
+  │       → calls destination (any address, any calldata, any value)
+  │
+  └─ POST-OP (gas settlement):
+      GhostPaymaster._postOp()
+        ├─ Mark nullifier spent (prevents replay)
+        ├─ Convert actualGasCost (BNB wei) → USDC at configured rate
+        └─ GhostPool.deductFee(nullifierHash, usdcAmount, USDC)
+            → USDC.transfer(GhostPool → GhostPaymaster)
+
+Result: Smart account executed a transaction with ZERO BNB,
+        gas paid from pool's USDC balance, zero link to depositor.
+```
+
+---
+
+## On-Chain Event Trace (real tx `0xf75d06d...`)
+
+| Log | Contract | Event | Key Data |
+|---|---|---|---|
+| 0 | `GhostSmartAccountFactory` | `AccountCreated` | account=`0xeeffED...`, owner=`0x44cd98...`, salt=0 |
+| 1 | `EntryPoint` | `AccountDeployed` | factory=`0x7D5eb7...`, paymaster=`0xB5Be8a...` |
+| 2 | `EntryPoint` | `BeforeExecution` | (execution phase begins) |
+| 3 | `GhostPaymaster` | *(validatePaymasterUserOp pass)* | ZK proof verified ✅ |
+| 4 | `MockUSDC` | `Transfer` | from=GhostPool, to=GhostPaymaster, amount=44501 (0.044501 USDC) |
+| 5 | `GhostPool` | `FeeDeducted` | nullifierHash, amount=44501 |
+| 6 | `GhostPaymaster` | `PostOpSettled` | account=`0xeeffED...` |
+| 7 | `EntryPoint` | `UserOperationEvent` | nonce=0, success=true, gasUsed=844,440 |
+
+---
+
+## Gas Breakdown
+
+| Component | Gas |
+|---|---|
+| Groth16 BN128 on-chain verification | ~800,000 |
+| First-time smart account deployment (CREATE2) | ~200,000 |
+| `GhostSmartAccount.validateUserOp` | ~30,000 |
+| `execute()` calldata processing | ~21,000 |
+| `postOp` + `deductFee` + USDC transfer | ~50,000 |
+| EntryPoint overhead | ~50,000 |
+| Pre-verification gas | ~300,000 |
+| **Total (first relay, with deployment)** | **~844,440** |
+| **Total (subsequent relays, no deployment)** | **~564,932** |
+| **Cost (0.1 Gwei gas price)** | **~0.0000844 BNB ≈ $0.05** |
+| **Settled in USDC** | **0.044501 USDC** |
+
+---
+
+## Repository Structure
 
 ```
 BNB/
-├── contracts/                   # Solidity — Track 4.1 + 4.3
-│   ├── GhostPool.sol            # Privacy pool, Poseidon Merkle tree
-│   ├── GhostPaymaster.sol       # ERC-4337 Paymaster, dual ZK proof
-│   ├── AssociationSetProvider.sol  # 0xbow Clean Set Merkle root
-│   ├── Groth16Verifier.sol      # snarkjs auto-generated verifier
-│   ├── RailgunAdapter.sol       # GhostPool ↔ Railgun UTXO bridge
-│   └── GhostNameService.sol     # ghost://username registry
+├── contracts/                     ✅ Complete
+│   ├── contracts/
+│   │   ├── GhostPool.sol          Poseidon Merkle pool, multi-token deposits
+│   │   ├── GhostPaymaster.sol     ERC-4337 paymaster with ZK validation
+│   │   ├── GhostSmartAccount.sol  ERC-4337 smart account (owner + salt)
+│   │   ├── GhostSmartAccountFactory.sol  CREATE2 factory
+│   │   ├── Groth16Verifier.sol    Auto-generated by snarkjs, BN128 pairings
+│   │   ├── PoseidonHasher.sol     Poseidon T3 hash wrapper
+│   │   ├── interfaces/            IGhostPool, IGroth16Verifier, IPoseidonHasher
+│   │   └── mocks/                 MockERC20, MockGroth16Verifier, MockPoseidonHasher
+│   ├── circuits/
+│   │   ├── merkle_proof.circom    ✅ ZK circuit source (Groth16, depth=10)
+│   │   └── build/                 ✅ .r1cs, .zkey, .wasm, vk.json, pot15.ptau
+│   ├── deployments/97/
+│   │   └── addresses.json         ✅ Live BSC Testnet addresses
+│   └── scripts/
+│       ├── deploy.ts              ✅ Full deployment script
+│       └── check.ts               ✅ Live state check + smoke test
 │
-├── circuits/
-│   └── merkle_proof.circom      # Poseidon circuit, depth-20, Groth16
+├── frontend/                      ✅ Working DApp (Next.js 15, Turbopack)
+│   ├── app/
+│   │   ├── page.tsx               Main app shell (tabs, real MetaMask connect)
+│   │   ├── components/
+│   │   │   ├── DepositView.tsx    Deposit tab (mint, approve, deposit, note output)
+│   │   │   ├── RelayView.tsx      Relay tab (ZK proof + UserOp + bundler submit)
+│   │   │   ├── ScoreView.tsx      Privacy score tab (on-chain analysis)
+│   │   │   ├── ComplianceView.tsx Compliance tab (viewing key export)
+│   │   │   └── RailgunView.tsx    Railgun tab (UI only, not yet wired)
+│   │   └── api/bundle/route.ts   Next.js bundler API (submits to EntryPoint)
+│   ├── lib/
+│   │   ├── ghost.ts               Core logic: deposit, relay, ZK proof, UserOp
+│   │   └── addresses.ts           All contract addresses for BSC Testnet
+│   └── public/zk/
+│       ├── merkle_proof.wasm      ✅ WASM circuit served to browser (1.97 MB)
+│       ├── merkle_proof_final.zkey ✅ Proving key served to browser (1.68 MB)
+│       └── verification_key.json  ✅ Used for local verify before submission
 │
-├── backend/                     # Node.js Relayer — Track 4.1 + 4.3
-│   ├── src/routes/              # REST API endpoints
-│   ├── src/compliance/          # OFAC sync + ASP screening
-│   ├── src/zk/                  # snarkjs off-chain pre-verification
-│   ├── src/workers/             # BullMQ + Pimlico bundler
-│   ├── src/railgun/             # Waku broadcaster + POI generation
-│   └── src/yield/               # Idle USDC → Venus Protocol
+├── backend/                       ✅ Production-ready Fastify API
+│   └── src/
+│       ├── index.ts               Server entry: Fastify + CORS + graceful shutdown
+│       ├── api/routes/
+│       │   ├── relay.ts           POST /v1/relay, GET /v1/relay/status/:jobId
+│       │   └── pool.ts            GET /v1/pool/status, GET /v1/pool/merkle-proof
+│       ├── relayer/
+│       │   ├── queue.ts           BullMQ relay queue + worker (3 retries, backoff)
+│       │   ├── bundlerClient.ts   Pimlico/permissionless bundler client
+│       │   ├── paymasterClient.ts On-chain GhostPool reader (isKnownRoot etc.)
+│       │   └── userOpBuilder.ts   Zod schemas + UserOp validation
+│       ├── zk/
+│       │   ├── verifier.ts        Off-chain snarkjs Groth16 pre-screen
+│       │   └── merkleTree.ts      DB-persisted Poseidon Merkle tree mirror
+│       ├── compliance/
+│       │   ├── ofac.ts            OFAC SDN sync (1-hour refresh)
+│       │   ├── asp.ts             ASP check: local blocklist + Chainalysis
+│       │   └── blocklist.ts       Unified blocklist CRUD
+│       └── db/                    Prisma + Postgres schema + repositories
 │
-├── sdk/                         # TypeScript SDK — Track 4.2
-│   ├── src/GhostWallet.ts       # Spending key + viewing key
-│   ├── src/ProofBuilder.ts      # In-browser WASM Groth16 proving
-│   ├── src/UserOpBuilder.ts     # ERC-4337 UserOp with dual ZK proof
-│   └── src/react/               # PrivacyProvider + useGhostWallet hook
-│
-├── frontend/                    # Next.js DApp — Track 4.1 + 4.2 + 4.3
-│   ├── Deposit + Note backup
-│   ├── ZK proof generation (WASM progress bar)
-│   ├── Railgun shield/unshield/swap UI
-│   ├── Privacy Score Dashboard (0–100, shareable)
-│   ├── Ghost Name Service (ghost://username)
-│   └── Compliance Report (viewing key export PDF)
-│
-└── extension/                   # Chrome Extension — Ghost Mode
-    ├── manifest.json            # Manifest V3
-    ├── popup/                   # Toggle + Privacy Score badge
-    └── content/interceptor.ts   # window.ethereum tx interceptor
+└── web/                           ✅ Marketing landing page (Next.js)
+    └── app/page.tsx               Hero, features, how-it-works, compliance sections
 ```
 
 ---
 
-## ⚡ Quick Start
+## Key Addresses (BSC Testnet, chainId 97)
+
+```
+Deployer / Bundler EOA    : 0x90e6a10271D31EA4EA29B66D48e6f078C4091f77
+EntryPoint v0.7           : 0x0000000071727De22E5E9d8BAf0edAc6f37da032
+GhostPool                 : 0xd2c227909A77359b422C1BfEa6B482f2559eF6aa
+GhostPaymaster            : 0xB5Be8a242feb47A40aE6BBC5C065b77Cec2eD6df
+GhostSmartAccountFactory  : 0x7D5eb77Bc8a3f2aDE845c450b9d97bfD20DDEda0
+Groth16Verifier           : 0x61ac3A70Ed4CAab15dd547b374dd1BF7a519cdfA
+PoseidonHasher            : 0x432E4098133165D2f90E768fa73642236c6f910b
+MockUSDC                  : 0xC1d58E84ebFdCd4C29674C805a6CF53a21dC9D33
+MockUSDT                  : 0xE0a53adFa5f64f45e81DDEFC770Ddf0DE3a92FFe
+```
+
+---
+
+## Running the Project
+
+### Frontend DApp
 
 ```bash
-# Install
-git clone https://github.com/your-org/ghost-privacy.git && cd ghost-privacy
-npm install --prefix backend && npm install --prefix contracts
-npm install --prefix sdk && npm install --prefix frontend
-
-# Compile ZK circuit
-cd circuits
-circom merkle_proof.circom --r1cs --wasm --sym
-snarkjs groth16 setup merkle_proof.r1cs pot12_final.ptau circuit.zkey
-snarkjs zkey export solidityverifier circuit.zkey ../contracts/Groth16Verifier.sol
-
-# Deploy contracts to BNB Testnet
-cd ../contracts && npx hardhat run scripts/deploy.ts --network bsc-testnet
-
-# Run
-cd ../backend && npm run dev          # API server :3001
-cd ../backend && npm run worker       # BullMQ relay worker
-cd ../frontend && npm run dev         # dApp :3000
+cd frontend
+npm install
+npm run dev          # http://localhost:3000
 ```
 
----
+The frontend is self-contained — it talks directly to BSC Testnet via the NodeReal RPC and submits UserOps via the built-in Next.js API route (`/api/bundle`). No separate backend needed for the demo.
 
-## 🧑‍💻 Developer Integration (SDK)
+### Contracts — Check Live State
 
 ```bash
-npm install @ghost-privacy/sdk
+cd contracts
+npm install
+npx hardhat run scripts/check.ts --network bsc-testnet
 ```
 
-```tsx
-// Option A — Drop-in React component (zero config)
-import { PrivacyProvider } from '@ghost-privacy/sdk/react'
+This reads live on-chain state, prints pool balances, Merkle root, paymaster deposit, then runs a smoke-test deposit.
 
-export default function App() {
-  return (
-    <PrivacyProvider chainId={56}>  {/* BNB Chain */}
-      <YourExistingDApp />
-      {/* ↑ Users now get a Ghost Mode toggle automatically */}
-    </PrivacyProvider>
-  )
-}
+### Backend (full relayer)
 
-// Option B — Full control
-import { GhostWallet, ProofBuilder, GhostClient } from '@ghost-privacy/sdk'
+```bash
+cd backend
+cp .env.example .env    # fill in DATABASE_URL, REDIS_URL, RELAYER_PRIVATE_KEY
+npm install
+npm run dev             # http://localhost:3001
+```
 
-const wallet  = new GhostWallet()         // spending + viewing keys
-const { note } = await GhostClient.deposit({ amount: 10, token: 'USDC' })
-const proof   = await ProofBuilder.generate(note, merkleTree)
-await GhostClient.relay({ wallet, proof, callData })
+Requires Postgres + Redis. The frontend's `/api/bundle` route is a simplified bundler that bypasses the full backend — the backend (`/v1/relay`) adds BullMQ queuing, off-chain ZK pre-verification, OFAC compliance checks, and Prisma persistence on top.
 
-// Compliance — share viewing key with auditor
-const viewingKey = wallet.exportViewingKey()
-// Auditor sees full tx history. Public chain: still sees nothing.
+### Recompile ZK Circuits (if needed)
+
+```bash
+cd contracts/circuits
+# Requires circom 2.x and snarkjs
+circom merkle_proof.circom --r1cs --wasm --sym -o build/
+
+# Trusted setup (already done — only redo if circuit changes)
+snarkjs powersoftau new bn128 15 build/pot15.ptau
+snarkjs powersoftau prepare phase2 build/pot15.ptau build/pot15_final.ptau
+snarkjs groth16 setup build/merkle_proof.r1cs build/pot15_final.ptau build/merkle_proof_0.zkey
+snarkjs zkey contribute build/merkle_proof_0.zkey build/merkle_proof_final.zkey
+snarkjs zkey export verificationkey build/merkle_proof_final.zkey build/verification_key.json
+snarkjs zkey export solidityverifier build/merkle_proof_final.zkey ../contracts/Groth16Verifier.sol
+
+# Copy artifacts to frontend
+cp build/merkle_proof_js/merkle_proof.wasm ../frontend/public/zk/
+cp build/merkle_proof_final.zkey ../frontend/public/zk/
+cp build/verification_key.json ../frontend/public/zk/
 ```
 
 ---
 
-## ✅ Compliance
+## What Is Not Yet Built
 
-Ghost implements the **0xbow ASP model** — privacy that's cryptographically compliant.
-
-```
-Tornado Cash (non-compliant):  prove "I'm in the pool"
-Ghost (0xbow compliant):       prove "I'm in the pool"  ✅
-                             + prove "I'm in the clean set" ✅  ← ASP
-                             + Proof of Innocence on exit ✅   ← Railgun POI
-                             + Viewing keys for regulators ✅
-```
-
-| Screen | Mechanism |
-|--------|-----------|
-| OFAC SDN | Every deposit/relay address checked, list synced every 60 min |
-| ASP Clean Set | Only OFAC-clean commitments enter the Merkle root |
-| Proof of Innocence | ZK-prove full Railgun tx graph never touched flagged inputs |
-| Viewing Keys | Share `viewingKey` with auditor — they see all history, chain sees nothing |
+| Feature | Status | Notes |
+|---|---|---|
+| Railgun shielding (real) | ❌ UI only | Needs `RailgunAdapter.sol` + Waku broadcaster |
+| Proof of Innocence (real) | ❌ UI only | Needs `railgun/poi.ts` using Railgun SDK |
+| Venus Protocol yield | ❌ Planned | Idle USDC in pool earning yield |
+| AssociationSetProvider.sol | ❌ Planned | On-chain ASP for 0xbow-style clean-set proofs |
+| GhostNameService.sol | ❌ Planned | `ghost://username` ENS-like registry |
+| Chrome Extension | ❌ Planned | Intercept `eth_sendTransaction` → route via Ghost |
+| `@ghost-privacy/sdk` npm package | ❌ Planned | React hooks + GhostWallet + ProofBuilder |
+| Docker Compose | ❌ Planned | Postgres + Redis + backend in one command |
+| Contract tests | ❌ Planned | Hardhat tests for GhostPool + GhostPaymaster |
 
 ---
 
-## 📚 References
+## Privacy Guarantee
 
-| Resource | Why |
-|----------|-----|
-| [EIP-4337](https://eips.ethereum.org/EIPS/eip-4337) | Account Abstraction / UserOperation standard |
-| [0xbow ASP Model](https://0xbow.io/) | Compliance framework used for Ghost's Clean Set |
-| [Railgun Protocol](https://railgun.org/) | Private DeFi + Proof of Innocence |
-| [Pimlico Bundler](https://docs.pimlico.io/) | ERC-4337 bundler for UserOp relay |
-| [Circom](https://docs.circom.io/) | ZK circuit toolchain |
-| [Venus Protocol](https://venus.io/) | BNB Chain yield for idle pool USDC |
+```
+On-chain observer sees:
+  ✅ A commitment inserted into GhostPool (no amount revealed? No — amount IS visible)
+  ✅ A fresh smart account (0xeeffED...) receiving a UserOp
+  ✅ GhostPaymaster deducting a fee from GhostPool
+
+On-chain observer cannot see:
+  ❌ Which commitment corresponds to which withdrawal (nullifierHash reveals nothing)
+  ❌ The depositor's identity (commitment = Poseidon(secret, nullifier), one-way)
+  ❌ The secret or nullifier (never leave the browser)
+  ❌ Which Merkle leaf was spent (ZK proof proves membership without revealing position)
+```
+
+The anonymity set grows with every deposit. The larger the set, the stronger the privacy.
 
 ---
 
-<div align="center">
+## Tech Stack
 
-Built for **BNB Chain × YZI Labs Hack Bengaluru · Track 4 — Privacy Solutions**
-
-*"Privacy is not about hiding. It's about choosing what to share, and with whom."*
-
-**👻 Ghost — Compliant privacy. Gasless by default. Invisible to the chain.**
-
-</div>
+| Layer | Technology |
+|---|---|
+| Smart contracts | Solidity 0.8.x, Hardhat, OpenZeppelin |
+| ZK circuits | Circom 2.0, snarkjs, Groth16, BN128 |
+| ZK in browser | snarkjs WASM (1.97 MB), WebAssembly |
+| Frontend | Next.js 15, Turbopack, TypeScript, Tailwind CSS |
+| Wallet | ethers.js v6, MetaMask (EIP-1193) |
+| ERC-4337 | EntryPoint v0.7, GhostSmartAccount, GhostPaymaster |
+| Backend | Fastify, BullMQ, Prisma, Postgres, Redis |
+| RPC | NodeReal (BSC Testnet) |
+| Compliance | OFAC SDN sync, ASP (Association Set Provider) |

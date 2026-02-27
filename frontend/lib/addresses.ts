@@ -7,8 +7,10 @@ export const ADDRESSES = {
     GhostSmartAccountFactory: "0x7D5eb77Bc8a3f2aDE845c450b9d97bfD20DDEda0",
     PoseidonHasher: "0x432E4098133165D2f90E768fa73642236c6f910b",
     Groth16Verifier: "0x61ac3A70Ed4CAab15dd547b374dd1BF7a519cdfA",
-    USDC: "0xC1d58E84ebFdCd4C29674C805a6CF53a21dC9D33",
-    USDT: "0xE0a53adFa5f64f45e81DDEFC770Ddf0DE3a92FFe",
+    // Real BSC Testnet USD Coin (18 decimals) — https://testnet.bscscan.com/token/0x64544969ed7ebf5f083679233325356ebe738930
+    USDC: "0x64544969ed7ebf5f083679233325356ebe738930",
+    // Real BSC Testnet Tether (18 decimals, has claimFaucet()) — https://testnet.bscscan.com/token/0x5c0d9bb86b99168aa8a36fad84d068d258c259a5
+    USDT: "0x5c0d9bb86b99168aa8a36fad84d068d258c259a5",
 } as const;
 
 export const BSC_TESTNET = {
