@@ -5,6 +5,7 @@ import { Globe } from "@/components/ui/globe";
 export function GlobeHero() {
   return (
     <Globe
+      className="max-w-none"
       config={{
         width: 800,
         height: 800,
