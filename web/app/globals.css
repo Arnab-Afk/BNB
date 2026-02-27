@@ -121,13 +121,9 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: transparent;
     font-family: var(--font-manrope), sans-serif;
-    background-color: #ffffff;
-    background-image:
-      linear-gradient(to right, #f0f0f0 1px, transparent 1px),
-      linear-gradient(to bottom, #f0f0f0 1px, transparent 1px);
-    background-size: 40px 40px;
   }
 }
 
