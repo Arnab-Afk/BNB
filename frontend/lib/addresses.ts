@@ -1,0 +1,47 @@
+// Deployed contract addresses — BSC Testnet (chainId: 97)
+export const ADDRESSES = {
+    chainId: 97,
+    entryPoint: "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+    GhostPool: "0xd2c227909A77359b422C1BfEa6B482f2559eF6aa",
+    GhostPaymaster: "0xB5Be8a242feb47A40aE6BBC5C065b77Cec2eD6df",
+    GhostSmartAccountFactory: "0x7D5eb77Bc8a3f2aDE845c450b9d97bfD20DDEda0",
+    PoseidonHasher: "0x432E4098133165D2f90E768fa73642236c6f910b",
+    Groth16Verifier: "0x61ac3A70Ed4CAab15dd547b374dd1BF7a519cdfA",
+    USDC: "0xC1d58E84ebFdCd4C29674C805a6CF53a21dC9D33",
+    USDT: "0xE0a53adFa5f64f45e81DDEFC770Ddf0DE3a92FFe",
+} as const;
+
+export const BSC_TESTNET = {
+    chainId: "0x61", // 97 in hex
+    chainName: "BSC Testnet",
+    rpcUrls: ["https://bsc-testnet.nodereal.io/v1/c282d0f1f2b74678b587e87980d22d5e"],
+    nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+    blockExplorerUrls: ["https://testnet.bscscan.com"],
+};
+
+export const TREE_DEPTH = 10;
+
+/**
+ * Zero values for the GhostPool incremental Merkle tree.
+ * Read directly from 0xd2c227909A77359b422C1BfEa6B482f2559eF6aa.zeros(i) on BSC testnet.
+ * These are Poseidon-based and differ from the standard Tornado Cash keccak zeros.
+ *
+ * zeros[0] = contract's base zero leaf value
+ * zeros[i] = Poseidon(zeros[i-1], zeros[i-1])
+ */
+export const ZEROS: readonly bigint[] = [
+    5705183461228517602336801517105026607504870245084201526585420060990698713278n,
+    13200837873415960474277735278496929275161749090519098737025201140524525578013n,
+    15081410246777836761430117045741243346940299046218295051624574532193506020713n,
+    4465329913260971202987516242986846745981800164654595949290788408555513164652n,
+    15345377348476196619442649456655772007084588302342130569424336850247567339074n,
+    15714955750633796992850721421408444015705628510842186252441223639217859446043n,
+    3569330881614782090938323527786592093458656435567430579673430131460132648225n,
+    14205374747123716994110868220597263133502347831021720670789370861912614153270n,
+    17695894719908710769018504384570841291192049004492266901744679863670881374004n,
+    7419009680392099361765151860919657308533959004408498543155637289070730431489n,
+    0n, // zeros[10] = 0 (root of empty tree at depth 10, used as sentinel)
+];
+
+// Keep ZERO_VALUE as the base leaf zero (zeros[0]) for backward compat
+export const ZERO_VALUE = ZEROS[0];

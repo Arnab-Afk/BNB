@@ -1,47 +1,54 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { deposit, connectWallet, DepositProgress } from "@/lib/ghost";
 
 const DENOMINATIONS = ["1", "10", "100", "1000"];
 
 export default function DepositView() {
   const [amount, setAmount] = useState("10");
-  const [token, setToken] = useState("USDC");
-  const [step, setStep] = useState<"form" | "confirming" | "done">("form");
-  const [note, setNote] = useState("");
+  const [token, setToken] = useState<"USDC" | "USDT">("USDC");
+  const [wallet, setWallet] = useState("");
+  const [progress, setProgress] = useState<DepositProgress | null>(null);
   const [noteCopied, setNoteCopied] = useState(false);
 
-  function handleDeposit() {
-    setStep("confirming");
-    setTimeout(() => {
-      setNote(
-        "ghost:v1:0x" +
-          Math.random().toString(16).slice(2, 18) +
-          Math.random().toString(16).slice(2, 18) +
-          Math.random().toString(16).slice(2, 18)
-      );
-      setStep("done");
-    }, 2000);
-  }
+  const step = progress?.step ?? "form";
+
+  const handleConnect = useCallback(async () => {
+    try {
+      const addr = await connectWallet();
+      setWallet(addr);
+    } catch (e: unknown) {
+      alert((e as Error).message);
+    }
+  }, []);
+
+  const handleDeposit = useCallback(async () => {
+    if (!wallet) { await handleConnect(); return; }
+    setProgress({ step: "minting", message: "Starting deposit…" });
+    await deposit(amount, token, (p) => setProgress({ ...p }));
+  }, [wallet, amount, token, handleConnect]);
 
   function copyNote() {
-    navigator.clipboard.writeText(note);
+    navigator.clipboard.writeText(progress?.note ?? "");
     setNoteCopied(true);
     setTimeout(() => setNoteCopied(false), 2500);
   }
 
   function reset() {
-    setStep("form");
-    setNote("");
+    setProgress(null);
     setAmount("10");
   }
 
   const fee = (Number(amount) * 0.005).toFixed(2);
   const total = (Number(amount) + Number(fee)).toFixed(2);
+  const shortWallet = wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : "";
 
   return (
     <div className="grid grid-cols-[3fr_2fr] divide-x divide-[#e5e7eb] min-h-full">
       {/* LEFT */}
       <div className="overflow-auto p-10">
+
+        {/* ── Form ─────────────────────────────────────────────────── */}
         {step === "form" && (
           <>
             <h2 className="text-3xl font-light tracking-tight mb-2">
@@ -53,30 +60,21 @@ export default function DepositView() {
             </p>
 
             {/* Token */}
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Choose token
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Choose token</label>
             <p className="text-sm text-gray-400 mb-3">Select which stablecoin you want to deposit.</p>
             <div className="flex gap-2 mb-8">
-              {["USDC", "USDT", "DAI"].map((t) => (
+              {(["USDC", "USDT"] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setToken(t)}
-                  className={`px-5 py-2.5 text-sm font-semibold border-2 transition-all rounded-sm ${
-                    token === t
-                      ? "bg-black text-white border-black"
-                      : "bg-white text-gray-700 border-[#e5e7eb] hover:border-gray-400"
-                  }`}
-                >
-                  {t}
-                </button>
+                  className={`px-5 py-2.5 text-sm font-semibold border-2 transition-all rounded-sm ${token === t ? "bg-black text-white border-black" : "bg-white text-gray-700 border-[#e5e7eb] hover:border-gray-400"
+                    }`}
+                >{t}</button>
               ))}
             </div>
 
             {/* Amount */}
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Select amount
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Select amount</label>
             <p className="text-sm text-gray-400 mb-3">
               Fixed denominations are required for zero-knowledge proofs. All deposits are equal size — this is how anonymity works.
             </p>
@@ -85,11 +83,8 @@ export default function DepositView() {
                 <button
                   key={d}
                   onClick={() => setAmount(d)}
-                  className={`py-4 text-center border-2 transition-all rounded-sm ${
-                    amount === d
-                      ? "bg-black text-white border-black"
-                      : "bg-white text-gray-700 border-[#e5e7eb] hover:border-gray-400"
-                  }`}
+                  className={`py-4 text-center border-2 transition-all rounded-sm ${amount === d ? "bg-black text-white border-black" : "bg-white text-gray-700 border-[#e5e7eb] hover:border-gray-400"
+                    }`}
                 >
                   <span className="block text-lg font-bold">{d}</span>
                   <span className={`text-xs mt-0.5 ${amount === d ? "text-gray-300" : "text-gray-400"}`}>{token}</span>
@@ -97,22 +92,24 @@ export default function DepositView() {
               ))}
             </div>
 
-            {/* Summary row */}
+            {/* Summary */}
             <div className="flex items-center gap-4 p-4 bg-[#f3f4f6] border border-[#e5e7eb] rounded-sm mb-8">
               <div className="flex-1 text-sm text-gray-500">
                 You pay: <span className="font-semibold text-black">{amount} {token}</span>
                 <span className="text-gray-400"> + {fee} {token} fee</span>
               </div>
-              <div className="text-sm font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-sm">
-                0 BNB gas
-              </div>
+              <div className="text-sm font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-sm">0 BNB gas</div>
             </div>
 
-            <button
-              onClick={handleDeposit}
-              className="btn-brutalist bg-black text-white w-full py-4 text-sm font-semibold flex items-center justify-center gap-3"
-            >
-              Deposit {total} {token}
+            {wallet && (
+              <div className="flex items-center gap-2 mb-4 text-xs text-gray-500">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                Connected: <span className="font-mono font-semibold text-gray-800">{shortWallet}</span>
+              </div>
+            )}
+
+            <button onClick={handleDeposit} className="btn-brutalist bg-black text-white w-full py-4 text-sm font-semibold flex items-center justify-center gap-3">
+              {wallet ? `Deposit ${total} ${token}` : "Connect Wallet & Deposit"}
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
               </svg>
@@ -120,77 +117,90 @@ export default function DepositView() {
           </>
         )}
 
-        {step === "confirming" && (
+        {/* ── Progress ─────────────────────────────────────────────── */}
+        {(step === "minting" || step === "approving" || step === "committing") && (
           <div className="flex flex-col justify-center py-16 gap-5">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 border-2 border-black border-t-transparent rounded-full animate-spin shrink-0" />
               <div>
-                <p className="text-lg font-semibold">Confirming your deposit…</p>
-                <p className="text-sm text-gray-500 mt-1">Generating cryptographic commitment and nullifier</p>
+                <p className="text-lg font-semibold">Processing your deposit…</p>
+                <p className="text-sm text-gray-500 mt-1">{progress?.message}</p>
               </div>
             </div>
             <div className="space-y-2 pl-14">
-              {["Sending {amount} {token} to pool", "Creating Poseidon hash commitment", "Deriving nullifier from spending key"].map((s, i) => (
-                <p key={i} className="text-sm text-gray-400 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />
-                  {s.replace("{amount}", amount).replace("{token}", token)}
-                </p>
-              ))}
+              {[
+                { id: "minting", label: `Minting ${amount} ${token} test tokens` },
+                { id: "approving", label: "Approving GhostPool contract" },
+                { id: "committing", label: "Submitting deposit + commitment" },
+              ].map(({ id, label }) => {
+                const order = ["minting", "approving", "committing"];
+                const myIdx = order.indexOf(id);
+                const curIdx = order.indexOf(step);
+                return (
+                  <p key={id} className="text-sm text-gray-400 flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full inline-block ${myIdx < curIdx ? "bg-green-500" : myIdx === curIdx ? "bg-purple-500" : "bg-gray-300"}`} />
+                    {label}
+                  </p>
+                );
+              })}
             </div>
           </div>
         )}
 
+        {/* ── Done ─────────────────────────────────────────────────── */}
         {step === "done" && (
           <>
-            <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-sm mb-8">
+            <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-sm mb-4">
               <span className="text-green-600 text-lg font-bold">✓</span>
               <div>
-                <p className="text-sm font-semibold text-green-800">Deposit confirmed</p>
-                <p className="text-xs text-green-600">Your Ghost Note is ready to use</p>
+                <p className="text-sm font-semibold text-green-800">Deposit confirmed on BSC Testnet</p>
+                {progress?.txHash && (
+                  <a href={`https://testnet.bscscan.com/tx/${progress.txHash}`} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-green-600 hover:underline font-mono">
+                    {progress.txHash.slice(0, 18)}… ↗
+                  </a>
+                )}
               </div>
             </div>
 
             <h3 className="text-lg font-semibold mb-1">Your Ghost Note</h3>
             <p className="text-sm text-gray-500 mb-4">
-              This is your withdrawal key. Save it somewhere safe — it cannot be recovered once you leave this page.
+              This is your withdrawal key. Save it — it cannot be recovered once you leave this page.
             </p>
-
             <div className="border-2 border-black bg-[#f3f4f6] rounded-sm p-4 font-mono text-xs break-all leading-relaxed mb-4 select-all">
-              {note}
+              {progress?.note}
             </div>
-
             <div className="flex gap-3 mb-8">
-              <button
-                onClick={copyNote}
-                className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold border-2 rounded-sm transition-all btn-brutalist ${
-                  noteCopied
-                    ? "bg-green-600 text-white border-green-600"
-                    : "bg-black text-white border-black"
-                }`}
-              >
-                {noteCopied ? (
-                  <><span>✓</span> Copied!</>
-                ) : (
-                  <><span>⎘</span> Copy Note</>
-                )}
+              <button onClick={copyNote}
+                className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold border-2 rounded-sm transition-all btn-brutalist ${noteCopied ? "bg-green-600 text-white border-green-600" : "bg-black text-white border-black"
+                  }`}>
+                {noteCopied ? (<><span>✓</span> Copied!</>) : (<><span>⎘</span> Copy Note</>)}
               </button>
-              <button
-                onClick={reset}
-                className="px-6 py-3 text-sm font-semibold border-2 border-[#e5e7eb] hover:border-black rounded-sm transition-colors"
-              >
+              <button onClick={reset} className="px-6 py-3 text-sm font-semibold border-2 border-[#e5e7eb] hover:border-black rounded-sm transition-colors">
                 New Deposit
               </button>
             </div>
-
             <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-sm">
               <span className="text-amber-500 text-base shrink-0 mt-0.5">⚠</span>
               <div>
                 <p className="text-sm font-semibold text-amber-800">Save this Note before leaving</p>
-                <p className="text-sm text-amber-700 mt-0.5">
-                  Ghost Notes are never stored anywhere. If you lose it, your deposit cannot be recovered.
-                </p>
+                <p className="text-sm text-amber-700 mt-0.5">Ghost Notes are never stored anywhere. If you lose it, your deposit cannot be recovered.</p>
               </div>
             </div>
+          </>
+        )}
+
+        {/* ── Error ─────────────────────────────────────────────────── */}
+        {step === "error" && (
+          <>
+            <div className="flex items-start gap-3 p-5 bg-red-50 border border-red-200 rounded-sm mb-6">
+              <span className="text-red-500 text-base shrink-0 mt-0.5">✕</span>
+              <div>
+                <p className="text-sm font-semibold text-red-800">Deposit failed</p>
+                <p className="text-sm text-red-600 mt-1 leading-relaxed font-mono text-xs">{progress?.error}</p>
+              </div>
+            </div>
+            <button onClick={reset} className="btn-brutalist px-6 py-3 text-sm font-semibold">← Try again</button>
           </>
         )}
       </div>
@@ -203,7 +213,7 @@ export default function DepositView() {
             { label: "Deposit amount", val: `${amount} ${token}` },
             { label: "Protocol fee (0.5%)", val: `${fee} ${token}` },
             { label: "Gas cost", val: "0 BNB", accent: "text-green-600" },
-            { label: "OFAC screening", val: "Automatic", accent: "text-blue-600" },
+            { label: "Network", val: "BSC Testnet", accent: "text-blue-600" },
           ].map(({ label, val, accent }) => (
             <div key={label} className="flex justify-between items-center px-5 py-3.5 border-b border-[#e5e7eb] last:border-b-0">
               <span className="text-sm text-gray-500">{label}</span>
@@ -219,9 +229,9 @@ export default function DepositView() {
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 mb-4">How it works</p>
         <div className="bg-white border border-[#e5e7eb] rounded-sm overflow-hidden mb-6">
           {[
-            { n: "1", title: "Commit", desc: "A cryptographic hash of your deposit is stored on-chain. Nobody can link it to your wallet." },
-            { n: "2", title: "Store your Note", desc: "Your Ghost Note is the only proof you made this deposit. Keep it private." },
-            { n: "3", title: "Relay later", desc: "Use the Relay tab to withdraw from any fresh wallet, sponsored by Ghost Paymaster." },
+            { n: "1", title: "Commit", desc: "A Poseidon hash of your deposit is stored on-chain in a Merkle tree. Nobody can link it to your wallet." },
+            { n: "2", title: "Store your Note", desc: "Your Ghost Note encodes your secret + nullifier. Keep it private — it's your withdrawal key." },
+            { n: "3", title: "Relay later", desc: "Use the Relay tab to withdraw from any fresh wallet, with gas sponsored by Ghost Paymaster." },
           ].map(({ n, title, desc }, i, arr) => (
             <div key={n} className={`flex gap-4 p-5 ${i < arr.length - 1 ? "border-b border-[#e5e7eb]" : ""}`}>
               <div className="w-7 h-7 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center shrink-0 text-xs font-bold">{n}</div>
@@ -235,7 +245,7 @@ export default function DepositView() {
 
         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-sm text-purple-700 text-xs font-semibold">
           <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-          0xbow ASP · OFAC Compliant
+          Real ZK · Poseidon · Groth16
         </div>
       </div>
     </div>
