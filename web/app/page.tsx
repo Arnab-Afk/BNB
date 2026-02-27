@@ -3,7 +3,7 @@ export default function Home() {
     <div className="font-(family-name:--font-manrope) text-black antialiased">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-[#e5e7eb]">
-        <nav className="container mx-auto px-6 h-20 flex items-center justify-between">
+        <nav className="container mx-auto px-6 h-14 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-black flex items-center justify-center">
