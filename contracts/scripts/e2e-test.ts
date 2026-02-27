@@ -1,360 +1,268 @@
-import { ethers } from "hardhat";
-import { readFileSync, writeFileSync } from "fs";
-import { join } from "path";
-
-/**
- * e2e-test.ts — Full end-to-end Ghost Paymaster demonstration
+﻿/**
+ * e2e-test.ts â€” Full end-to-end test without frontend
  *
- * What this proves:
- *   A FRESH WALLET WITH 0 BNB executes a real on-chain transaction.
- *   Gas is paid by GhostPaymaster using funds from GhostPool.
- *   Zero BNB ever flows from the KYC depositor wallet to the fresh wallet.
+ * Wallet A (deployer)  : 0x90e6a10271D31EA4EA29B66D48e6f078C4091f77  (funds + owner)
+ * Wallet B (blank)     : 0x44cd98CD2E773355dB5761E7D167F57f6a9fE1fB  (the clean recipient)
  *
  * Flow:
- *   1. Generate a fresh wallet (0 BNB, completely new)
- *   2. Deployer deposits 5 USDC into GhostPool (commitment for the fresh wallet)
- *   3. Compute fresh wallet's smart account address (no deployment yet)
- *   4. Build PackedUserOperation — fresh wallet wants to call checkBalance()
- *   5. Attach paymasterAndData with a ZK proof (fake — MockVerifier accepts all)
- *   6. Fresh wallet signs the UserOp (uses its private key, no BNB needed)
- *   7. Deployer acts as bundler — calls EntryPoint.handleOps()
- *   8. EntryPoint: validates paymaster → executes tx → postOp settles fee
- *   9. Verify: fresh wallet transacted, pool USDC decreased, nullifier spent ✅
- *
- * Run: node node_modules/hardhat/internal/cli/cli.js run scripts/e2e-test.ts --network bsc-testnet
+ *   1. Deployer mints + deposits USDC â†’ Ghost Note
+ *   2. Compute Merkle path from chain events
+ *   3. Build PackedUserOperation with correct gas + paymasterAndData
+ *   4. Deployer signs (smart account owner)
+ *   5. handleOps() via deployer bundler
+ *   6. Print gas used + success
  */
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import { ethers } from "hardhat";
+import { buildPoseidon } from "circomlibjs";
 
-function pack128(high: bigint, low: bigint): bigint {
-    return (high << 128n) | low;
+// â”€â”€ Addresses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const DEPLOYER_KEY = "1437c6e656c9afd75cae09210d80ea969aa614cba8a144ea9a8371e173332ddb";
+const BLANK_WALLET = "0x44cd98CD2E773355dB5761E7D167F57f6a9fE1fB";
+
+const ENTRY_POINT = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
+const GHOST_POOL = "0xd2c227909A77359b422C1BfEa6B482f2559eF6aa";
+const GHOST_PM = "0xB5Be8a242feb47A40aE6BBC5C065b77Cec2eD6df";
+const GHOST_FACTORY = "0x7D5eb77Bc8a3f2aDE845c450b9d97bfD20DDEda0";
+const USDC = "0xC1d58E84ebFdCd4C29674C805a6CF53a21dC9D33";
+
+// Zero values read directly from deployed contract
+const ZEROS = [
+    5705183461228517602336801517105026607504870245084201526585420060990698713278n,
+    13200837873415960474277735278496929275161749090519098737025201140524525578013n,
+    15081410246777836761430117045741243346940299046218295051624574532193506020713n,
+    4465329913260971202987516242986846745981800164654595949290788408555513164652n,
+    15345377348476196619442649456655772007084588302342130569424336850247567339074n,
+    15714955750633796992850721421408444015705628510842186252441223639217859446043n,
+    3569330881614782090938323527786592093458656435567430579673430131460132648225n,
+    14205374747123716994110868220597263133502347831021720670789370861912614153270n,
+    17695894719908710769018504384570841291192049004492266901744679863670881374004n,
+    7419009680392099361765151860919657308533959004408498543155637289070730431489n,
+];
+const TREE_DEPTH = 10;
+
+// â”€â”€ ABIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const ERC20_ABI = [
+    "function mint(address to, uint256 amount) external",
+    "function approve(address spender, uint256 amount) returns (bool)",
+    "function decimals() view returns (uint8)",
+];
+const POOL_ABI = [
+    "function deposit(bytes32 commitment, uint256 amount, address token) external",
+    "function nextLeafIndex() view returns (uint32)",
+    "function getLastRoot() view returns (bytes32)",
+    "function isKnownRoot(bytes32 root) view returns (bool)",
+    "event Deposit(bytes32 indexed commitment, uint32 indexed leafIndex, uint256 amount, address indexed token, uint256 timestamp)",
+];
+const EP_ABI = [
+    "function getNonce(address sender, uint192 key) view returns (uint256)",
+    "function getUserOpHash(tuple(address sender, uint256 nonce, bytes initCode, bytes callData, bytes32 accountGasLimits, uint256 preVerificationGas, bytes32 gasFees, bytes paymasterAndData, bytes signature) userOp) view returns (bytes32)",
+    `function handleOps(
+    tuple(address sender, uint256 nonce, bytes initCode, bytes callData, bytes32 accountGasLimits, uint256 preVerificationGas, bytes32 gasFees, bytes paymasterAndData, bytes signature)[] ops,
+    address payable beneficiary
+  ) external`,
+    "function getDepositInfo(address) view returns (uint112 deposit, bool staked, uint112 stake, uint32 unstakeDelaySec, uint48 withdrawTime)",
+];
+const FACTORY_ABI = [
+    "function getAddress(address owner, uint256 salt) view returns (address)",
+    "function createAccount(address owner, uint256 salt) returns (address)",
+];
+
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function packGas(hi: bigint, lo: bigint): string {
+    return ethers.concat([
+        ethers.zeroPadValue(ethers.toBeHex(hi), 16),
+        ethers.zeroPadValue(ethers.toBeHex(lo), 16),
+    ]);
 }
-
-function packBytes32(high: bigint, low: bigint): string {
-    return ethers.zeroPadValue(ethers.toBeHex(pack128(high, low)), 32);
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-    const [deployer] = await ethers.getSigners();
-    const network = await ethers.provider.getNetwork();
-    const chainId = Number(network.chainId);
     const provider = ethers.provider;
+    const deployer = new ethers.Wallet(DEPLOYER_KEY, provider);
 
-    // Load deployed addresses
-    const a = JSON.parse(
-        readFileSync(join(__dirname, "..", "deployments", chainId.toString(), "addresses.json"), "utf-8")
-    );
+    console.log("â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—");
+    console.log("â•‘     Ghost Protocol â€” Full E2E Test (Node)        â•‘");
+    console.log("â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n");
+    console.log("  Deployer  :", deployer.address);
+    console.log("  Blank     :", BLANK_WALLET);
+    console.log("  Balance   :", ethers.formatEther(await provider.getBalance(deployer.address)), "BNB\n");
 
-    console.log("\n╔══════════════════════════════════════════════════════════════╗");
-    console.log("║      👻 GHOST PAYMASTER — END-TO-END REAL TEST              ║");
-    console.log("╚══════════════════════════════════════════════════════════════╝\n");
+    const poseidonLib = await buildPoseidon();
+    const poseidon = (inputs: bigint[]): bigint => poseidonLib.F.toObject(poseidonLib(inputs));
 
-    // ── Step 1: Deploy the factory (if not already) ───────────────────────────
-
-    let factoryAddress: string;
-    if (a.GhostSmartAccountFactory) {
-        factoryAddress = a.GhostSmartAccountFactory;
-        console.log("✓  Using existing GhostSmartAccountFactory:", factoryAddress);
-    } else {
-        console.log("→  Deploying GhostSmartAccountFactory...");
-        const Factory = await ethers.getContractFactory("GhostSmartAccountFactory");
-        const factory = await Factory.deploy(a.entryPoint);
-        await factory.waitForDeployment();
-        factoryAddress = await factory.getAddress();
-        console.log("✓  GhostSmartAccountFactory deployed:", factoryAddress);
-        // Save for future runs
-        a.GhostSmartAccountFactory = factoryAddress;
-        writeFileSync(
-            join(__dirname, "..", "deployments", chainId.toString(), "addresses.json"),
-            JSON.stringify(a, null, 2)
-        );
+    // â”€â”€ Step 1: Check Paymaster deposit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const ep = new ethers.Contract(ENTRY_POINT, EP_ABI, deployer);
+    const pmInfo = await ep.getDepositInfo(GHOST_PM);
+    console.log("â”€â”€ Paymaster EntryPoint state â”€â”€");
+    console.log("  Deposit :", ethers.formatEther(pmInfo.deposit), "BNB");
+    console.log("  Staked  :", pmInfo.staked);
+    if (pmInfo.deposit < ethers.parseEther("0.01")) {
+        throw new Error("Paymaster has insufficient EntryPoint deposit! Top it up.");
     }
 
-    const factory = await ethers.getContractAt("GhostSmartAccountFactory", factoryAddress);
+    // â”€â”€ Step 2: Deposit USDC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    console.log("\nâ”€â”€ Step 1: Deposit â”€â”€");
+    const erc20 = new ethers.Contract(USDC, ERC20_ABI, deployer);
+    const pool = new ethers.Contract(GHOST_POOL, POOL_ABI, deployer);
+    const dec = await erc20.decimals();
+    const amt = ethers.parseUnits("1", dec);
 
-    // Disable ZK verification so MockVerifier + recipient check are bypassed for this test
-    const paymaster = await ethers.getContractAt("GhostPaymaster", a.GhostPaymaster);
-    if (await paymaster.zkVerificationEnabled()) {
-        console.log("→  Disabling ZK verification for test (re-enable with setZkVerificationEnabled(true))...");
-        await (await paymaster.setZkVerificationEnabled(false)).wait();
-        console.log("✓  ZK verification disabled\n");
+    const secret = BigInt("0x" + Buffer.from(ethers.randomBytes(31)).toString("hex"));
+    const nullif = BigInt("0x" + Buffer.from(ethers.randomBytes(31)).toString("hex"));
+    const commit = poseidon([secret, nullif]);
+    const nullHash = poseidon([nullif]);
+
+    console.log("  Minting 1 USDC...");
+    await (await erc20.mint(deployer.address, amt)).wait();
+    console.log("  Approving GhostPool...");
+    await (await erc20.approve(GHOST_POOL, amt)).wait();
+
+    const leafIdx = Number(await pool.nextLeafIndex());
+    console.log("  Depositing (leafIndex will be", leafIdx + ")...");
+    const depositTx = await (await pool.deposit(ethers.toBeHex(commit, 32), amt, USDC)).wait();
+    console.log("  âœ“ Deposit tx:", depositTx.hash);
+
+    // â”€â”€ Step 3: Rebuild Merkle tree â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    console.log("\nâ”€â”€ Step 2: Merkle tree â”€â”€");
+    const latest = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, latest - 60000);
+    const allEvents: ethers.EventLog[] = [];
+    const CHUNK = 5000;
+    for (let s = fromBlock; s <= latest; s += CHUNK) {
+        const evs = await pool.queryFilter(pool.filters.Deposit(), s, Math.min(s + CHUNK - 1, latest));
+        for (const ev of evs) allEvents.push(ev as ethers.EventLog);
+    }
+    console.log("  Deposit events found:", allEvents.length);
+
+    const leaves: bigint[] = Array(2 ** TREE_DEPTH).fill(ZEROS[0]);
+    for (const ev of allEvents) {
+        leaves[Number(ev.args.leafIndex)] = BigInt(ev.args.commitment);
     }
 
-    // ── Step 2: Generate a fresh wallet (0 BNB) ───────────────────────────────
-
-    const freshWallet = ethers.Wallet.createRandom().connect(provider);
-    const freshBalance = await provider.getBalance(freshWallet.address);
-    const deployerBalance = await provider.getBalance(deployer.address);
-
-    console.log("\n  ┌─ Fresh Wallet ─────────────────────────────────────────────┐");
-    console.log(`  │  Address   : ${freshWallet.address}`);
-    console.log(`  │  BNB Bal   : ${ethers.formatEther(freshBalance)} BNB  ← ZERO! No gas!`);
-    console.log(`  │  Private K : ${freshWallet.privateKey}`);
-    console.log("  └────────────────────────────────────────────────────────────┘\n");
-
-    // ── Step 3: Pre-compute smart account address ─────────────────────────────
-
-    // Use wallet address as deterministic salt — avoids address collision with factory
-    const SALT = BigInt(freshWallet.address);
-    const smartAccAddr = await factory.getAddress(freshWallet.address, SALT);
-    const smartAccCode = await provider.getCode(smartAccAddr);
-    const alreadyExists = smartAccCode !== "0x";
-
-    console.log(`  Smart Account (pre-computed) : ${smartAccAddr}`);
-    console.log(`  Already deployed             : ${alreadyExists ? "yes" : "no — will deploy via initCode"}\n`);
-
-    // ── Step 4: Deposit 5 USDC into GhostPool for the fresh wallet ───────────
-    // The depositor IS the fresh wallet conceptually, but since it has 0 BNB,
-    // the deployer deposits on its behalf (in a real app, the user would have funded
-    // the pool from an exchange withdrawal before switching to the fresh wallet).
-
-    const pool = await ethers.getContractAt("GhostPool", a.GhostPool);
-    const mockUsdc = await ethers.getContractAt("MockERC20", a.USDC);
-    const DEPOSIT = ethers.parseUnits("5", 6); // 5 USDC
-
-    console.log("  ┌─ Step 4: Deposit into GhostPool ───────────────────────────┐");
-    console.log("  │  (Simulates: user deposited from their KYC exchange wallet)");
-
-    // Generate commitment: in production = Poseidon(secret, nullifier)
-    // For test: keccak256(freshWallet.address + "secret")
-    const secret = ethers.keccak256(ethers.toUtf8Bytes(freshWallet.address + "ghost_secret"));
-    const nullifier = ethers.keccak256(ethers.toUtf8Bytes(freshWallet.address + "ghost_nullifier"));
-    const commitment = ethers.keccak256(ethers.concat([secret, nullifier]));
-    const nullifierHash = ethers.keccak256(nullifier);  // Poseidon(nullifier) in prod
-
-    console.log(`  │  Secret        : ${secret}`);
-    console.log(`  │  Nullifier     : ${nullifier}`);
-    console.log(`  │  Commitment    : ${commitment}`);
-    console.log(`  │  NullifierHash : ${nullifierHash}`);
-
-    // Check if this commitment was already inserted (from a previous run)
-    const alreadyDeposited = await pool.isCommitmentInserted(commitment);
-
-    if (!alreadyDeposited) {
-        // Mint USDC to deployer and deposit
-        const mintTx = await mockUsdc.mint(deployer.address, DEPOSIT);
-        await mintTx.wait();
-        const approveTx = await mockUsdc.approve(a.GhostPool, DEPOSIT);
-        await approveTx.wait();
-        const depositTx = await pool.deposit(commitment, DEPOSIT, a.USDC);
-        const receipt = await depositTx.wait();
-        console.log(`  │  ✅ Deposited 5 USDC  (tx: ${receipt!.hash})`);
-    } else {
-        console.log(`  │  ✅ Commitment already in tree (re-using from previous run)`);
+    const layers: bigint[][] = [leaves];
+    for (let d = 0; d < TREE_DEPTH; d++) {
+        const prev = layers[d];
+        const next: bigint[] = [];
+        for (let i = 0; i < prev.length; i += 2) {
+            next.push(poseidon([prev[i] ?? ZEROS[d], prev[i + 1] ?? ZEROS[d]]));
+        }
+        layers.push(next);
     }
+    const root = layers[TREE_DEPTH][0];
+    const onChainRoot = BigInt(await pool.getLastRoot());
 
-    const merkleRoot = await pool.getLastRoot();
-    const poolBalBefore = await pool.poolBalance(a.USDC);
-    console.log(`  │  Merkle Root   : ${merkleRoot}`);
-    console.log(`  │  Pool Balance  : ${ethers.formatUnits(poolBalBefore, 6)} USDC`);
-    console.log("  └────────────────────────────────────────────────────────────┘\n");
+    console.log("  JS root   :", "0x" + root.toString(16));
+    console.log("  Chain root:", "0x" + onChainRoot.toString(16));
+    console.log("  Match?    :", root === onChainRoot ? "âœ“ YES" : "âœ— NO â€” MISMATCH!");
 
-    // ── Step 5: Check nullifier not already spent ─────────────────────────────
+    if (root !== onChainRoot) throw new Error("Root mismatch!");
 
-    // paymaster already declared above
-    const isSpent = await paymaster.nullifiers(nullifierHash);
-    if (isSpent) {
-        console.log("  ⚠️  Nullifier already spent from a previous run.");
-        console.log("      Generating fresh commitment with timestamp seed...\n");
-        // In a real system, each spend uses a unique nullifier
-    }
+    const isKnown = await pool.isKnownRoot(ethers.toBeHex(root, 32));
+    console.log("  isKnownRoot:", isKnown ? "âœ“" : "âœ—");
 
-    // ── Step 6: Build the PackedUserOperation ─────────────────────────────────
+    // â”€â”€ Step 4: Smart account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    console.log("\nâ”€â”€ Step 3: Smart Account â”€â”€");
+    const factory = new ethers.Contract(GHOST_FACTORY, FACTORY_ABI, deployer);
+    const sa = await factory.getFunction("getAddress(address,uint256)")(deployer.address, 0n);
+    const code = await provider.getCode(sa);
+    const isDepl = code !== "0x";
+    console.log("  Address :", sa);
+    console.log("  Deployed:", isDepl ? "yes" : "no (initCode will deploy)");
 
-    console.log("  ┌─ Step 6: Build UserOperation ──────────────────────────────┐");
+    const initCode = isDepl ? "0x" :
+        ethers.concat([
+            GHOST_FACTORY,
+            new ethers.Interface(FACTORY_ABI).encodeFunctionData("createAccount", [deployer.address, 0n]),
+        ]);
 
-    // initCode: tells EntryPoint to deploy the smart account if it doesn't exist yet
-    // Format: 20 bytes (factory address) + calldata for factory.createAccount()
-    const factoryCalldata = factory.interface.encodeFunctionData("createAccount", [
-        freshWallet.address,
-        SALT,
-    ]);
-    const initCode = alreadyExists
-        ? "0x"
-        : ethers.concat([factoryAddress, factoryCalldata]);
+    // â”€â”€ Step 5: Build paymasterAndData â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    console.log("\nâ”€â”€ Step 4: UserOperation â”€â”€");
+    const nonce = await ep.getNonce(sa, 0n);
+    console.log("  Nonce:", nonce.toString());
 
-    // callData: what the fresh wallet wants to do
-    // Here: call pool.getLastRoot() as a demo (any on-chain call works)
-    const smartAcc = await ethers.getContractAt("GhostSmartAccount", smartAccAddr);
-    const innerCall = pool.interface.encodeFunctionData("getLastRoot");
-    const callData = smartAcc.interface.encodeFunctionData("execute", [
-        a.GhostPool,
-        0,          // no value
-        innerCall,
-    ]);
+    const gasPrice = BigInt(await provider.send("eth_gasPrice", []));
+    console.log("  Gas price:", ethers.formatUnits(gasPrice, "gwei"), "Gwei");
 
-    // Gas limits
-    const verificationGasLimit = 300_000n; // for paymaster validation + account creation
-    const callGasLimit = 100_000n;
-    const preVerificationGas = 50_000n;
-    const maxFeePerGas = ethers.parseUnits("5", "gwei");
-    const maxPriorityFeePerGas = ethers.parseUnits("1", "gwei");
+    // pubSignals[0]=root, [1]=nullifierHash, [2]=recipient(sa)
+    const pubSignals: [bigint, bigint, bigint] = [root, nullHash, BigInt(sa)];
 
-    // accountGasLimits = verificationGasLimit | callGasLimit (packed 128+128)
-    const accountGasLimits = packBytes32(verificationGasLimit, callGasLimit);
-    // gasFees = maxPriorityFeePerGas | maxFeePerGas (packed 128+128)
-    const gasFees = packBytes32(maxPriorityFeePerGas, maxFeePerGas);
+    // Dummy proof (ZK disabled â€” values ignored on-chain)
+    const pA: [bigint, bigint] = [1n, 2n];
+    const pB: [[bigint, bigint], [bigint, bigint]] = [[1n, 2n], [3n, 4n]];
+    const pC: [bigint, bigint] = [1n, 2n];
 
-    // Get nonce from EntryPoint
-    const entryPoint = await ethers.getContractAt(
-        ["function getNonce(address sender, uint192 key) view returns (uint256)",
-            "function handleOps((address,uint256,bytes,bytes,bytes32,uint256,bytes32,bytes,bytes)[] calldata ops, address payable beneficiary) external",
-            "function getUserOpHash((address,uint256,bytes,bytes,bytes32,uint256,bytes32,bytes,bytes) calldata userOp) view returns (bytes32)"],
-        a.entryPoint
-    );
-    const nonce = await entryPoint.getNonce(smartAccAddr, 0n);
-
-    // paymasterAndData layout (GhostPaymaster):
-    //   [0:20]   paymaster address
-    //   [20:36]  paymasterVerificationGasLimit (uint128)
-    //   [36:52]  paymasterPostOpGasLimit (uint128)
-    //   [52:84]  validUntil (uint256) — 0 = no expiry
-    //   [84:116] validAfter (uint256) — 0 = any time
-    //   [116:148] feeToken (uint256 zero-padded address)
-    //   [148...]  abi.encode(ZK proof)
-    const paymasterVerGasLimit = 200_000n;
-    const paymasterPostOpGasLimit = 100_000n;
-    const validUntil = 0n;
-    const validAfter = 0n;
-
-    // Fake ZK proof — MockGroth16Verifier accepts all zeros
-    // Public signals: [merkleRoot, nullifierHash, recipient(=smartAccAddr)]
-    const fakeZkProof = ethers.AbiCoder.defaultAbiCoder().encode(
+    const proofEncoded = ethers.AbiCoder.defaultAbiCoder().encode(
         ["uint256[2]", "uint256[2][2]", "uint256[2]", "uint256[3]"],
-        [
-            [0n, 0n],
-            [[0n, 0n], [0n, 0n]],
-            [0n, 0n],
-            [
-                BigInt(merkleRoot),
-                BigInt(nullifierHash),
-                BigInt(smartAccAddr),   // recipient = bound to this specific UserOp sender
-            ],
-        ]
+        [pA, pB, pC, pubSignals],
+    );
+    const header = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["uint256", "uint256", "address"],
+        [0n, 0n, USDC],
     );
 
-    const paymasterAndData = ethers.concat([
-        a.GhostPaymaster,                                                         // [0:20]
-        ethers.zeroPadValue(ethers.toBeHex(paymasterVerGasLimit), 16),            // [20:36]
-        ethers.zeroPadValue(ethers.toBeHex(paymasterPostOpGasLimit), 16),         // [36:52]
-        ethers.zeroPadValue(ethers.toBeHex(validUntil), 32),                      // [52:84]
-        ethers.zeroPadValue(ethers.toBeHex(validAfter), 32),                      // [84:116]
-        ethers.zeroPadValue(a.USDC, 32),                                           // [116:148]
-        fakeZkProof,                                                               // [148...]
-    ]);
+    const pmVerGas = ethers.zeroPadValue(ethers.toBeHex(900_000n), 16);
+    const pmPostGas = ethers.zeroPadValue(ethers.toBeHex(200_000n), 16);
+    const paymasterAndData = ethers.concat([GHOST_PM, pmVerGas, pmPostGas, header, proofEncoded]);
+    console.log("  paymasterAndData length:", (paymasterAndData.length - 2) / 2, "bytes");
 
-    const userOp = {
-        sender: smartAccAddr,
-        nonce,
+    // callData: smart account executes call to blank wallet
+    const execCall = new ethers.Interface(
+        ["function execute(address target, uint256 value, bytes calldata data) external"]
+    ).encodeFunctionData("execute", [BLANK_WALLET, 0n, "0x"]);
+
+    const partialOp = {
+        sender: sa,
+        nonce: nonce.toString(),
         initCode,
-        callData,
-        accountGasLimits,
-        preVerificationGas,
-        gasFees,
+        callData: execCall,
+        accountGasLimits: packGas(500_000n, 300_000n),
+        preVerificationGas: "300000",
+        gasFees: packGas(gasPrice, (gasPrice * 120n) / 100n),
         paymasterAndData,
-        signature: "0x", // placeholder — we sign after computing the hash
+        signature: "0x",
     };
 
-    console.log(`  │  sender       : ${smartAccAddr}`);
-    console.log(`  │  nonce        : ${nonce}`);
-    console.log(`  │  initCode     : ${initCode === "0x" ? "0x (account exists)" : initCode.slice(0, 42) + "..."}`);
-    console.log(`  │  callData     : execute(getLastRoot)`);
-    console.log(`  │  pmAndData    : GhostPaymaster + fake ZK proof`);
+    const userOpHash = await ep.getUserOpHash(partialOp);
+    console.log("  UserOpHash:", userOpHash);
 
-    // ── Step 7: Get UserOp hash and sign with fresh wallet ────────────────────
+    const sig = await deployer.signMessage(ethers.getBytes(userOpHash));
+    const finalOp = { ...partialOp, signature: sig };
 
-    const userOpHash = await entryPoint.getUserOpHash([
-        userOp.sender,
-        userOp.nonce,
-        userOp.initCode,
-        userOp.callData,
-        userOp.accountGasLimits,
-        userOp.preVerificationGas,
-        userOp.gasFees,
-        userOp.paymasterAndData,
-        userOp.signature,
-    ]);
+    // â”€â”€ Step 6: Simulate first â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    console.log("\nâ”€â”€ Step 5: Simulate (eth_call) â”€â”€");
+    try {
+        await ep.handleOps.staticCall([finalOp], deployer.address, { gasLimit: BigInt(6_000_000) });
+        console.log("  âœ“ Simulation passed!");
+    } catch (simE: unknown) {
+        const e = simE as { message?: string; reason?: string; data?: string };
+        console.log("  âœ— Simulation failed:", e.reason ?? e.message);
+        if (e.data) {
+            // decode inner
+            const pmIface = new ethers.Interface([
+                "error InvalidPaymasterData()",
+                "error InvalidZKProof()",
+                "error UnknownMerkleRoot(bytes32)",
+                "error NullifierAlreadySpent(bytes32)",
+                "error RecipientMismatch(address,address)",
+                "error TokenNotAllowed(address)",
+                "error CallerNotPaymaster(address)",
+                "error AA23 reverted()",
+            ]);
+            try { console.log("  Inner:", pmIface.parseError(e.data)); }
+            catch (_) { console.log("  Raw data:", e.data?.slice(0, 100)); }
+        }
+        throw new Error("Simulation failed â€” not submitting");
+    }
 
-    // Sign with the FRESH WALLET — it has 0 BNB but can still sign
-    const signature = await freshWallet.signMessage(ethers.getBytes(userOpHash));
-    userOp.signature = signature;
-
-    console.log(`  │  userOpHash   : ${userOpHash}`);
-    console.log(`  │  signature    : ${signature.slice(0, 20)}...`);
-    console.log(`  │  Signed by    : ${freshWallet.address} (0 BNB)`);
-    console.log("  └────────────────────────────────────────────────────────────┘\n");
-
-    // ── Step 8: Submit — deployer acts as bundler ──────────────────────────────
-
-    console.log("  ┌─ Step 8: Submit UserOperation via EntryPoint ──────────────┐");
-    console.log("  │  Deployer is acting as bundler (pays BNB gas from own funds)");
-    console.log("  │  Fresh wallet pays ZERO BNB — Ghost Paymaster covers it");
-    console.log("  │");
-
-    const handleOpsTx = await entryPoint.handleOps(
-        [[
-            userOp.sender,
-            userOp.nonce,
-            userOp.initCode,
-            userOp.callData,
-            userOp.accountGasLimits,
-            userOp.preVerificationGas,
-            userOp.gasFees,
-            userOp.paymasterAndData,
-            userOp.signature,
-        ]],
-        deployer.address, // bundler fee recipient
-    );
-
-    const receipt = await handleOpsTx.wait();
-    const base = chainId === 97 ? "https://testnet.bscscan.com" : "https://bscscan.com";
-
-    console.log(`  │  ✅ handleOps submitted!`);
-    console.log(`  │  Tx Hash    : ${receipt!.hash}`);
-    console.log(`  │  Gas used   : ${receipt!.gasUsed.toString()}`);
-    console.log(`  │  BscScan    : ${base}/tx/${receipt!.hash}`);
-    console.log("  └────────────────────────────────────────────────────────────┘\n");
-
-    // ── Step 9: Verify results ────────────────────────────────────────────────
-
-    console.log("  ┌─ Step 9: Verify Results ───────────────────────────────────┐");
-
-    const freshBalAfter = await provider.getBalance(freshWallet.address);
-    const poolBalAfter = await pool.poolBalance(a.USDC);
-    const nullifierSpent = await paymaster.nullifiers(nullifierHash);
-    const acctCodeAfter = await provider.getCode(smartAccAddr);
-
-    console.log(`  │  Fresh wallet BNB balance : ${ethers.formatEther(freshBalAfter)} BNB`);
-    console.log(`  │    (still zero — never funded, never needed) ✅`);
-    console.log(`  │`);
-    console.log(`  │  Smart account deployed   : ${acctCodeAfter !== "0x" ? "✅ yes" : "❌ no"}`);
-    console.log(`  │  Smart account address    : ${smartAccAddr}`);
-    console.log(`  │`);
-    console.log(`  │  Pool USDC before         : ${ethers.formatUnits(poolBalBefore, 6)} USDC`);
-    console.log(`  │  Pool USDC after          : ${ethers.formatUnits(poolBalAfter, 6)} USDC`);
-    console.log(`  │  Fee deducted             : ${ethers.formatUnits(poolBalBefore - poolBalAfter, 6)} USDC`);
-    console.log(`  │`);
-    console.log(`  │  Nullifier spent          : ${nullifierSpent ? "✅ yes (cannot reuse this proof)" : "⚠️  not spent (postOp may have failed)"}`);
-    console.log("  └────────────────────────────────────────────────────────────┘\n");
-
-    console.log("  ╔══════════════════════════════════════════════════════════════╗");
-    console.log("  ║  ✅ END-TO-END TEST COMPLETE                                 ║");
-    console.log("  ║                                                              ║");
-    console.log("  ║  A fresh wallet with 0 BNB executed a real on-chain tx.     ║");
-    console.log("  ║  Gas was paid by GhostPaymaster from GhostPool.             ║");
-    console.log("  ║  No BNB ever flowed from the KYC wallet to the fresh wallet.║");
-    console.log("  ╚══════════════════════════════════════════════════════════════╝\n");
-    console.log(`  Fresh wallet: ${base}/address/${freshWallet.address}`);
-    console.log(`  Smart acct  : ${base}/address/${smartAccAddr}`);
-    console.log(`  Tx          : ${base}/tx/${receipt!.hash}\n`);
+    // â”€â”€ Step 7: Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    console.log("\nâ”€â”€ Step 6: Submit handleOps â”€â”€");
+    const tx = await ep.handleOps([finalOp], deployer.address, { gasLimit: BigInt(6_000_000) });
+    console.log("  tx hash:", tx.hash);
+    const receipt = await tx.wait();
+    console.log("  âœ“ Mined! Block:", receipt.blockNumber, " Gas used:", receipt.gasUsed.toString());
+    console.log("\nðŸŽ‰ E2E test PASSED!");
+    console.log("  BscScan:", `https://testnet.bscscan.com/tx/${receipt.hash}`);
 }
 
-main()
-    .then(() => process.exit(0))
-    .catch((err) => {
-        console.error("\n❌ E2E test failed:", err.message);
-        if (err.data) console.error("   Revert data:", err.data);
-        process.exit(1);
-    });
+main().catch(e => { console.error("\nâŒ FAILED:", e.message); process.exit(1); });
+

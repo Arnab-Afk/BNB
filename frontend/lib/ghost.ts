@@ -259,8 +259,10 @@ export async function deposit(
         const nullifier = BigInt("0x" + toHex(crypto.getRandomValues(new Uint8Array(31))));
         const commitment = poseidon([secret, nullifier]);
 
-        const leafIndexBefore = Number(await pool.nextLeafIndex());
-        const commitBytes32 = ethers.zeroPadValue("0x" + commitment.toString(16), 32) as `0x${string}`;
+        const leafIndexBefore = Number(await new ethers.Contract(ADDRESSES.GhostPool, GHOST_POOL_ABI, getRpcProvider()).nextLeafIndex());
+        // ethers.toBeHex(bigint, 32) correctly pads to 32 bytes — avoids "invalid BytesLike"
+        // when commitment.toString(16) is odd-length (e.g. 63 hex chars = 31.5 bytes)
+        const commitBytes32 = ethers.toBeHex(commitment, 32) as `0x${string}`;
         const receipt = await (await pool.deposit(commitBytes32, amountWei, tokenAddr)).wait();
 
         onProgress({
@@ -375,8 +377,10 @@ function buildPaymasterAndData(
 
     // EntryPoint strips first 52 bytes (20 addr + 16 verGasLimit + 16 postOpGasLimit)
     // So paymasterAndData = GhostPaymaster(20) + verGasLim(16) + postOpGasLim(16) + header + proofEncoded
-    const verificationGasLimit = ethers.zeroPadValue(ethers.toBeHex(300_000n), 16);
-    const postOpGasLimit = ethers.zeroPadValue(ethers.toBeHex(100_000n), 16);
+    // Groth16 on-chain verification costs ~500k-800k gas.
+    // AA23 revert with empty inner data = out-of-gas in validatePaymasterUserOp.
+    const verificationGasLimit = ethers.zeroPadValue(ethers.toBeHex(900_000n), 16);
+    const postOpGasLimit = ethers.zeroPadValue(ethers.toBeHex(200_000n), 16);
 
     return ethers.concat([
         ADDRESSES.GhostPaymaster,
@@ -411,7 +415,7 @@ const FACTORY_ABI = [
 
 export async function getSmartAccountAddress(owner: string, salt: bigint): Promise<string> {
     const factory = new ethers.Contract(ADDRESSES.GhostSmartAccountFactory, FACTORY_ABI, getRpcProvider());
-    return await factory.getAddress(owner, salt);
+    return await factory.getFunction("getAddress(address,uint256)")(owner, salt);
 }
 
 // ─── Build initCode (deploys smart account on first UserOp) ──────────────────
@@ -452,7 +456,7 @@ export async function relay(
 
         const salt = 0n;
         const factory = new ethers.Contract(ADDRESSES.GhostSmartAccountFactory, FACTORY_ABI, rpc);
-        const smartAccount = await factory.getAddress(ownerAddr, salt);
+        const smartAccount = await factory.getFunction("getAddress(address,uint256)")(ownerAddr, salt);
 
         // ── 2. Check deployment ──────────────────────────────────────────────────
         const code = await rpc.getCode(smartAccount);
@@ -495,8 +499,8 @@ export async function relay(
             nonce: nonce.toString(),
             initCode,
             callData: execCall,
-            accountGasLimits: packGasLimits(300_000n, 500_000n),
-            preVerificationGas: "100000",
+            accountGasLimits: packGasLimits(500_000n, 300_000n),
+            preVerificationGas: "300000",
             gasFees: packGasFees(gasPrice, gasFeeHigh),
             paymasterAndData,
             signature: "0x",
@@ -529,4 +533,5 @@ export async function relay(
         });
     }
 }
+
 

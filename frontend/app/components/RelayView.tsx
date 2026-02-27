@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { relay, connectWallet, decodeNote, RelayProgress, getSmartAccountAddress } from "@/lib/ghost";
 
 const PROOF_STEPS = [
@@ -9,13 +9,21 @@ const PROOF_STEPS = [
   { id: "submitting", label: "Ghost Bundler → EntryPoint.handleOps()" },
 ];
 
-export default function RelayView() {
+interface RelayViewProps {
+  wallet?: string;
+  onWalletConnect?: (addr: string) => void;
+}
+
+export default function RelayView({ wallet: walletProp = "", onWalletConnect }: RelayViewProps) {
   const [note, setNote] = useState("");
   const [recipient, setRecipient] = useState("");
-  const [wallet, setWallet] = useState("");
+  const [localWallet, setLocalWallet] = useState("");
   const [progress, setProgress] = useState<RelayProgress | null>(null);
   const [hashCopied, setHashCopied] = useState(false);
   const [smartAcct, setSmartAcct] = useState("");
+
+  // Use parent wallet if provided, fall back to local state
+  const wallet = walletProp || localWallet;
 
   const step = progress?.step ?? "form";
   const pct = progress?.pct ?? 0;
@@ -31,20 +39,29 @@ export default function RelayView() {
   } catch { /* ignore parse errors */ }
 
   const handleConnect = useCallback(async () => {
-    try { const addr = await connectWallet(); setWallet(addr); }
-    catch (e: unknown) { alert((e as Error).message); }
-  }, []);
-
-  // Preview smart account address when note + wallet are set
-  const handleNoteChange = useCallback(async (val: string) => {
-    setNote(val);
-    if (wallet && val.startsWith("ghost:v1:")) {
-      try {
-        const addr = await getSmartAccountAddress(wallet, 0n);
-        setSmartAcct(addr);
-      } catch { setSmartAcct(""); }
+    try {
+      const addr = await connectWallet();
+      setLocalWallet(addr);
+      onWalletConnect?.(addr);
     }
-  }, [wallet]);
+    catch (e: unknown) { alert((e as Error).message); }
+  }, [onWalletConnect]);
+
+  // Recompute smart account preview whenever wallet OR note changes
+  useEffect(() => {
+    if (wallet && note.startsWith("ghost:v1:")) {
+      getSmartAccountAddress(wallet, 0n)
+        .then(setSmartAcct)
+        .catch(() => setSmartAcct(""));
+    } else {
+      setSmartAcct("");
+    }
+  }, [wallet, note]);
+
+  // Keep note change handler — just updates state, useEffect handles preview
+  const handleNoteChange = useCallback((val: string) => {
+    setNote(val);
+  }, []);
 
   const handleRelay = useCallback(async () => {
     if (!wallet) { await handleConnect(); return; }
@@ -189,14 +206,14 @@ export default function RelayView() {
                 {PROOF_STEPS.map(({ id, label }, i) => (
                   <div key={id} className="flex items-center gap-3">
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold transition-all ${i < stepIdx ? "bg-green-500 text-white"
-                        : i === stepIdx ? "bg-purple-500 text-white animate-pulse"
-                          : "bg-[#f3f4f6] text-gray-300 border border-[#e5e7eb]"
+                      : i === stepIdx ? "bg-purple-500 text-white animate-pulse"
+                        : "bg-[#f3f4f6] text-gray-300 border border-[#e5e7eb]"
                       }`}>
                       {i < stepIdx ? "✓" : i + 1}
                     </div>
                     <span className={`text-sm transition-colors ${i < stepIdx ? "text-gray-500 line-through"
-                        : i === stepIdx ? "text-black font-semibold"
-                          : "text-gray-400"
+                      : i === stepIdx ? "text-black font-semibold"
+                        : "text-gray-400"
                       }`}>{label}</span>
                   </div>
                 ))}

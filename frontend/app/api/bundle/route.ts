@@ -59,24 +59,30 @@ export async function POST(req: NextRequest) {
         console.log("[bundler] Beneficiary (gas fee collector):", bundler.address);
 
         // handleOps — beneficiary is the bundler itself (collects EntryPoint gas refund)
+        // gasLimit must cover:
+        //   - paymasterVerificationGasLimit (900k) for Groth16 on-chain verification
+        //   - accountVerificationGasLimit   (500k) for smart account validateUserOp
+        //   - callGasLimit                  (300k) for smart account execute()
+        //   - postOpGasLimit                (200k) for paymaster postOp + deductFee
+        //   - preVerificationGas            (300k) overhead
+        //   Total budget: ~2.2M → use 5M to be safe
         const tx = await entryPoint.handleOps(
             [userOp],
             bundler.address,
-            {
-                gasLimit: 3_000_000n,
-            }
+            { gasLimit: BigInt(5_000_000) }
         );
 
         console.log("[bundler] tx submitted:", tx.hash);
         const receipt = await tx.wait();
-        console.log("[bundler] confirmed in block:", receipt.blockNumber);
+        console.log("[bundler] confirmed in block:", receipt.blockNumber, "gas used:", receipt.gasUsed.toString());
 
         return NextResponse.json({ txHash: receipt.hash });
 
     } catch (e: unknown) {
-        const err = e as { message?: string; reason?: string; shortMessage?: string };
+        const err = e as { message?: string; reason?: string; shortMessage?: string; data?: string };
         const msg = err.shortMessage ?? err.reason ?? err.message ?? String(e);
         console.error("[bundler] error:", msg);
+        if (err.data) console.error("[bundler] revert data:", err.data);
         return NextResponse.json({ error: msg }, { status: 500 });
     }
 }

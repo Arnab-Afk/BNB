@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { FlickeringGrid } from "@/components/ui/flickering-grid";
 import DepositView from "./components/DepositView";
 import RelayView from "./components/RelayView";
 import RailgunView from "./components/RailgunView";
 import ScoreView from "./components/ScoreView";
 import ComplianceView from "./components/ComplianceView";
+import { connectWallet } from "@/lib/ghost";
 
 const TABS = [
   { id: "deposit", label: "Deposit", tag: "4.1", desc: "Ghost Pool" },
@@ -20,9 +21,21 @@ type TabId = (typeof TABS)[number]["id"];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("deposit");
-  const [connected, setConnected] = useState(false);
+  const [wallet, setWallet] = useState("");
 
   const active = TABS.find((t) => t.id === activeTab)!;
+
+  const handleConnect = useCallback(async () => {
+    if (wallet) return; // already connected
+    try {
+      const addr = await connectWallet();
+      setWallet(addr);
+    } catch (e: unknown) {
+      alert((e as Error).message);
+    }
+  }, [wallet]);
+
+  const shortWallet = wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : "";
 
   return (
     <div className="h-screen flex flex-col bg-white overflow-hidden relative">
@@ -50,14 +63,19 @@ export default function App() {
           <a href="/" className="text-xs font-medium text-gray-500 hover:text-black transition-colors hidden sm:block">
             Landing ↗
           </a>
-          <button
-            onClick={() => setConnected((c) => !c)}
-            className={`text-xs font-bold uppercase tracking-widest px-5 py-2 btn-brutalist transition-all ${
-              connected ? "bg-black text-white" : "bg-white text-black"
-            }`}
-          >
-            {connected ? "0xab...3f9e" : "Connect"}
-          </button>
+          {wallet ? (
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+              <span className="font-mono text-xs font-semibold text-gray-700">{shortWallet}</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleConnect}
+              className="text-xs font-bold uppercase tracking-widest px-5 py-2 btn-brutalist bg-white text-black border border-black transition-all"
+            >
+              Connect Wallet
+            </button>
+          )}
         </div>
       </header>
 
@@ -117,10 +135,10 @@ export default function App() {
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">{active.desc}</span>
           </div>
 
-          {/* Tab panels */}
+          {/* Tab panels — wallet passed as prop so each view shares the global connection */}
           <div>
-            {activeTab === "deposit" && <DepositView />}
-            {activeTab === "relay" && <RelayView />}
+            {activeTab === "deposit" && <DepositView wallet={wallet} onWalletConnect={setWallet} />}
+            {activeTab === "relay" && <RelayView wallet={wallet} onWalletConnect={setWallet} />}
             {activeTab === "railgun" && <RailgunView />}
             {activeTab === "score" && <ScoreView />}
             {activeTab === "compliance" && <ComplianceView />}

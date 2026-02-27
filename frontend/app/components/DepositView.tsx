@@ -4,23 +4,32 @@ import { deposit, connectWallet, DepositProgress } from "@/lib/ghost";
 
 const DENOMINATIONS = ["1", "10", "100", "1000"];
 
-export default function DepositView() {
+interface DepositViewProps {
+  wallet?: string;
+  onWalletConnect?: (addr: string) => void;
+}
+
+export default function DepositView({ wallet: walletProp = "", onWalletConnect }: DepositViewProps) {
   const [amount, setAmount] = useState("10");
   const [token, setToken] = useState<"USDC" | "USDT">("USDC");
-  const [wallet, setWallet] = useState("");
+  const [localWallet, setLocalWallet] = useState("");
   const [progress, setProgress] = useState<DepositProgress | null>(null);
   const [noteCopied, setNoteCopied] = useState(false);
+
+  // Use parent wallet prop if available, fall back to local state
+  const wallet = walletProp || localWallet;
 
   const step = progress?.step ?? "form";
 
   const handleConnect = useCallback(async () => {
     try {
       const addr = await connectWallet();
-      setWallet(addr);
+      setLocalWallet(addr);
+      onWalletConnect?.(addr);
     } catch (e: unknown) {
       alert((e as Error).message);
     }
-  }, []);
+  }, [onWalletConnect]);
 
   const handleDeposit = useCallback(async () => {
     if (!wallet) { await handleConnect(); return; }
