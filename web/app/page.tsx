@@ -1,4 +1,5 @@
 import { FlickeringGrid } from "@/components/ui/flickering-grid";
+import { GlobeHero } from "@/components/ui/globe-hero";
 
 export default function Home() {
   return (
@@ -16,7 +17,7 @@ export default function Home() {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-[#e5e7eb]">
+      <header className="sticky top-0 z-50 bg-white/50 backdrop-blur-xl border-b border-[#e5e7eb]/60">
         <nav className="container mx-auto px-6 h-14 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
@@ -28,9 +29,9 @@ export default function Home() {
           {/* Nav Links */}
           <div className="hidden md:flex items-center space-x-10 text-sm font-medium">
             <a className="hover:text-purple-500 transition-colors" href="#how-it-works">How It Works</a>
+            <a className="hover:text-purple-500 transition-colors" href="#compliance">Compliance</a>
             <a className="hover:text-purple-500 transition-colors" href="#ecosystem">Ecosystem</a>
             <a className="hover:text-purple-500 transition-colors" href="#developers">Developers</a>
-            <a className="hover:text-purple-500 transition-colors" href="#compliance">Compliance</a>
             <a className="hover:text-purple-500 transition-colors" href="#community">Community</a>
           </div>
 
@@ -43,8 +44,9 @@ export default function Home() {
 
       <main>
         {/* Hero Section */}
-        <section id="hero" className="min-h-[calc(100vh-56px)] flex items-center container mx-auto px-6 py-24">
-          <div className="max-w-4xl">
+        <section id="hero" className="relative min-h-[calc(100vh-56px)] flex items-center overflow-hidden bg-white">
+          <div className="container mx-auto px-6 py-24 relative z-10">
+          <div className="max-w-2xl">
             <div className="inline-block border border-black px-3 py-1 mb-8 text-[10px] uppercase font-bold tracking-[0.2em] bg-white">
               v1.0.0 — BNB Chain × YZI Labs Hackathon
             </div>
@@ -99,6 +101,12 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </div>
+          </div>
+
+          {/* Globe — anchored to bottom-right corner, zoomed in */}
+          <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-250 h-250 hidden lg:block pointer-events-none">
+            <GlobeHero />
           </div>
         </section>
 
