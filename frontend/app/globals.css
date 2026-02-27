@@ -121,6 +121,17 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: #ffffff;
+    font-family: var(--font-manrope), sans-serif;
   }
+}
+
+.btn-brutalist {
+  transition: all 0.2s ease;
+  position: relative;
+}
+.btn-brutalist:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px #000;
 }
