@@ -174,11 +174,11 @@
 
 ### 3.3 Frontend (`web/`)
 
-- Marketing/landing page with brutalist design
-- Header with nav links and Connect button
-- Hero section ("Privacy Limitless for BNB Chain")
+- Marketing/landing page with brutalist design, updated typography (Manrope & Press Start 2P fonts), and text-based logos
+- Header with nav links, Connect button, and updated icon labels
+- Hero section ("Privacy Limitless for BNB Chain") with integrated `FlickeringGrid` background
 - Three-feature grid (Gas Relayer / Privacy SDK / Private Transactions)
-- Live stats section with volume chart placeholder
+- "How It Works" and "Compliance" sections
 - Footer with social links
 
 ---
