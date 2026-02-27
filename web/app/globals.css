@@ -122,5 +122,20 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-jetbrains-mono), monospace;
+    background-color: #ffffff;
+    background-image:
+      linear-gradient(to right, #f0f0f0 1px, transparent 1px),
+      linear-gradient(to bottom, #f0f0f0 1px, transparent 1px);
+    background-size: 40px 40px;
   }
+}
+
+.btn-brutalist {
+  transition: all 0.2s ease;
+  position: relative;
+}
+.btn-brutalist:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px #000;
 }
