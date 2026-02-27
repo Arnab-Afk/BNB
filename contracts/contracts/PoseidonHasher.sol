@@ -116,7 +116,7 @@ contract PoseidonHasher is IPoseidonHasher {
     ///          For a fully-audited, gas-optimised implementation, use the
     ///          assembly version from:
     ///          https://github.com/iden3/circomlibjs/blob/main/src/poseidon_slow_ref.js
-    function poseidon(bytes32 left, bytes32 right) external pure override returns (bytes32 hash) {
+    function poseidon(bytes32 left, bytes32 right) external view override returns (bytes32 hash) {
         uint256 l = uint256(left) % FIELD_SIZE;
         uint256 r = uint256(right) % FIELD_SIZE;
 
@@ -158,7 +158,7 @@ contract PoseidonHasher is IPoseidonHasher {
 
     /// @dev Compute x^5 mod FIELD_SIZE using square-and-multiply.
     ///      x^5 = x * x^4 = x * (x^2)^2
-    function _exp5(uint256 x) private pure returns (uint256) {
+    function _exp5(uint256 x) private pure returns (uint256) {  // pure is fine — no storage reads
         uint256 x2 = mulmod(x, x, FIELD_SIZE);
         uint256 x4 = mulmod(x2, x2, FIELD_SIZE);
         return mulmod(x, x4, FIELD_SIZE);

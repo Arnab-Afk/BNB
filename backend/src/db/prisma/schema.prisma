@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Deposits ────────────────────────────────────────────────────────────────
+
+/// A deposit event indexed from the on-chain GhostPool contract.
+model Deposit {
+  id          String   @id @default(cuid())
+  commitment  String   @unique          // 0x-prefixed bytes32 Poseidon hash
+  leafIndex   Int                        // Tree leaf index
+  merkleRoot  String                     // Merkle root after insertion
+  amount      String                     // Token amount (stored as string for precision)
+  token       String                     // ERC-20 token address (USDC / USDT)
+  txHash      String   @unique          // On-chain deposit tx hash
+  blockNumber BigInt?                    // Block number of deposit tx
+  depositor   String?                   // Depositor address (optional, for admin only)
+  createdAt   DateTime @default(now())
+
+  @@index([commitment])
+  @@index([leafIndex])
+  @@index([token])
+  @@map("deposits")
+}
+
+// ─── Nullifiers ───────────────────────────────────────────────────────────────
+
+/// Tracks spent nullifiers to prevent double-spend attacks.
+model Nullifier {
+  id            String   @id @default(cuid())
+  hash          String   @unique          // 0x-prefixed bytes32 nullifier hash
+  status        NullifierStatus @default(PENDING)
+  txHash        String?                   // UserOp tx hash once relayed
+  operationId   String?                   // Related relay operation ID
+  createdAt     DateTime @default(now())
+  spentAt       DateTime?
+
+  @@index([hash])
+  @@index([status])
+  @@map("nullifiers")
+}
+
+enum NullifierStatus {
+  PENDING    // Received, not yet on-chain
+  SPENT      // Confirmed on-chain
+  REVERTED   // Tx was reverted — nullifier is re-usable
+}
+
+// ─── Relay Operations ─────────────────────────────────────────────────────────
+
+/// A queued / processed UserOperation relay job.
+model RelayOperation {
+  id                  String          @id @default(cuid())
+  sender              String                          // Smart account address
+  userOpHash          String?         @unique         // ERC-4337 UserOp hash (once computed)
+  txHash              String?                         // On-chain tx hash once submitted
+  blockNumber         BigInt?
+  merkleRoot          String                          // Claimed merkle root from ZK proof
+  nullifierHash       String                          // Spent nullifier from ZK proof
+  status              OperationStatus @default(QUEUED)
+  gasUsed             String?
+  errorMessage        String?
+  chainId             Int             @default(56)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  completedAt         DateTime?
+
+  @@index([sender])
+  @@index([status])
+  @@index([nullifierHash])
+  @@map("relay_operations")
+}
+
+enum OperationStatus {
+  QUEUED      // Accepted, waiting in BullMQ
+  PROCESSING  // Worker is actively processing
+  SUBMITTED   // Sent to bundler
+  COMPLETED   // Confirmed on-chain
+  FAILED      // Non-recoverable error
+}
+
+// ─── Blocklist ────────────────────────────────────────────────────────────────
+
+/// OFAC SDN + custom address blocklist.
+model BlockedAddress {
+  id        String   @id @default(cuid())
+  address   String   @unique
+  reason    String                // "OFAC_SDN" | "CHAINALYSIS" | "MANUAL"
+  source    String
+  addedAt   DateTime @default(now())
+
+  @@index([address])
+  @@map("blocked_addresses")
+}
+
+// ─── Merkle Tree State ────────────────────────────────────────────────────────
+
+/// Persists the incremental Merkle tree state so it survives restarts.
+model MerkleTreeState {
+  id              String   @id @default("singleton")
+  nextIndex       Int      @default(0)
+  currentRoot     String
+  filledSubtrees  Json     // Map<level, bytes32>
+  treeHeight      Int
+  updatedAt       DateTime @updatedAt
+
+  @@map("merkle_tree_state")
+}
