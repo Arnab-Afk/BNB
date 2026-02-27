@@ -1,4 +1,5 @@
 import { FlickeringGrid } from "@/components/ui/flickering-grid";
+import { GlobeHero } from "@/components/ui/globe-hero";
 
 export default function Home() {
   return (
@@ -44,7 +45,8 @@ export default function Home() {
       <main>
         {/* Hero Section */}
         <section id="hero" className="min-h-[calc(100vh-56px)] flex items-center container mx-auto px-6 py-24">
-          <div className="max-w-4xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full">
+          <div>
             <div className="inline-block border border-black px-3 py-1 mb-8 text-[10px] uppercase font-bold tracking-[0.2em] bg-white">
               v1.0.0 — BNB Chain × YZI Labs Hackathon
             </div>
@@ -99,6 +101,12 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Globe */}
+          <div className="relative h-130 w-full hidden lg:block">
+            <GlobeHero />
+          </div>
           </div>
         </section>
 
