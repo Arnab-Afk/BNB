@@ -5,30 +5,33 @@ type RailgunAction = "shield" | "unshield" | "swap";
 
 const SHIELD_STEPS = [
   "Connecting to Railgun SDK",
-  "Generating 0zk address",
+  "Generating 0zk shielded address",
   "Ghost Paymaster sponsoring gas",
   "Submitting shield transaction",
   "Broadcasting via Waku P2P",
 ];
 
-const ACTION_META: Record<RailgunAction, { title: string; sub: string; desc: string; cta: string }> = {
+const ACTION_META: Record<RailgunAction, { title: string; sub: string; desc: string; helper: string; cta: string }> = {
   shield: {
     title: "Shield into",
     sub: "Railgun",
-    desc: "Move tokens into a Railgun shielded pool. Ghost Paymaster sponsors gas — no BNB needed. Funds become invisible on-chain.",
-    cta: "Shield →",
+    desc: "Move tokens into a private Railgun pool. Your balance becomes invisible on-chain. Ghost covers the gas — no BNB needed.",
+    helper: "Shielding moves funds into a ZK-protected UTXO pool. Once shielded, on-chain observers see nothing.",
+    cta: "Shield tokens",
   },
   unshield: {
     title: "Unshield from",
     sub: "Railgun",
-    desc: "Exit the Railgun pool with a Proof of Innocence. ZK-prove your full transaction history never touched sanctioned funds.",
-    cta: "Unshield + Generate POI →",
+    desc: "Exit the Railgun pool and receive a Proof of Innocence — cryptographic proof your funds never touched sanctioned wallets.",
+    helper: "Unshielding generates a Proof of Innocence automatically, satisfying regulatory requirements.",
+    cta: "Unshield + generate POI",
   },
   swap: {
     title: "Private",
     sub: "Swap",
-    desc: "Swap tokens inside the shielded pool. No MEV exposure. No on-chain identity link. ZK-SNARK routed.",
-    cta: "Swap →",
+    desc: "Swap tokens inside the shielded pool with no MEV exposure and no on-chain identity link.",
+    helper: "Swaps happen inside the encrypted pool. Amounts and addresses are never visible on-chain.",
+    cta: "Swap privately",
   },
 };
 
@@ -40,6 +43,7 @@ export default function RailgunView() {
   const [currentStep, setCurrentStep] = useState(-1);
   const [zkAddress, setZkAddress] = useState("");
   const [poiProof, setPoiProof] = useState("");
+  const [zkCopied, setZkCopied] = useState(false);
 
   const steps =
     action === "unshield"
@@ -68,19 +72,20 @@ export default function RailgunView() {
   }
 
   const meta = ACTION_META[action];
+  const pct = Math.round(((currentStep + 1) / steps.length) * 100);
 
   return (
     <div className="grid grid-cols-[3fr_2fr] divide-x divide-[#e5e7eb] min-h-full">
       {/* LEFT */}
       <div className="overflow-auto p-10">
         {/* Action tabs */}
-        <div className="flex border border-black mb-8">
+        <div className="flex border-2 border-black rounded-sm mb-8 overflow-hidden">
           {(["shield", "unshield", "swap"] as RailgunAction[]).map((a) => (
             <button
               key={a}
               onClick={() => { setAction(a); setStep("form"); setCurrentStep(-1); }}
-              className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest border-r last:border-r-0 border-black transition-all ${
-                action === a ? "bg-black text-white" : "bg-white hover:bg-[#f3f4f6]"
+              className={`flex-1 py-3 text-sm font-semibold border-r last:border-r-0 border-black transition-all capitalize ${
+                action === a ? "bg-black text-white" : "bg-white text-gray-700 hover:bg-[#f3f4f6]"
               }`}
             >
               {a}
@@ -93,26 +98,40 @@ export default function RailgunView() {
             <h2 className="text-3xl font-light tracking-tight mb-2">
               {meta.title} <span className="font-bold">{meta.sub}</span>
             </h2>
-            <p className="text-gray-500 text-sm leading-relaxed mb-10 max-w-md">{meta.desc}</p>
+            <p className="text-gray-500 text-sm leading-relaxed mb-3 max-w-md">{meta.desc}</p>
+            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-sm text-blue-700 text-sm mb-8">
+              <span className="shrink-0 mt-0.5">ℹ</span>
+              <span>{meta.helper}</span>
+            </div>
 
-            <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 mb-4">Token</h3>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Token</label>
+            <p className="text-sm text-gray-400 mb-3">Choose which token to {action}.</p>
             <div className="flex gap-2 mb-8">
               {["USDC", "USDT", "WBNB"].map((t) => (
                 <button key={t} onClick={() => setToken(t)}
-                  className={`px-5 py-2 text-sm font-bold uppercase tracking-widest border transition-colors btn-brutalist ${
-                    token === t ? "bg-black text-white border-black" : "bg-white border-[#e5e7eb] hover:border-black"
+                  className={`px-5 py-2.5 text-sm font-semibold border-2 rounded-sm transition-all ${
+                    token === t ? "bg-black text-white border-black" : "bg-white text-gray-700 border-[#e5e7eb] hover:border-gray-400"
                   }`}>
                   {t}
                 </button>
               ))}
             </div>
 
-            <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 mb-4">Amount</h3>
-            <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" type="number"
-              className="w-full border border-[#e5e7eb] p-4 text-sm font-bold focus:outline-none focus:border-black mb-10 transition-colors" />
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Amount</label>
+            <p className="text-sm text-gray-400 mb-3">Enter how much {token} you want to {action}.</p>
+            <div className="relative mb-10">
+              <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" type="number"
+                className="w-full border-2 border-[#e5e7eb] rounded-sm p-4 text-lg font-bold focus:outline-none focus:border-black pr-20 transition-colors" />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400">{token}</span>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-700 mb-6">
+              <span className="text-base">⛽</span>
+              Gas cost: <span className="font-bold">0 BNB</span> — sponsored by Ghost Paymaster
+            </div>
 
             <button onClick={handleSubmit}
-              className="btn-brutalist bg-black text-white px-8 py-4 text-xs font-bold uppercase tracking-widest flex items-center gap-3">
+              className="btn-brutalist bg-black text-white w-full py-4 text-sm font-semibold flex items-center justify-center gap-3 capitalize">
               {meta.cta}
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
@@ -122,110 +141,135 @@ export default function RailgunView() {
         )}
 
         {step === "processing" && (
-          <>
-            <h2 className="text-3xl font-light tracking-tight mb-8 capitalize">
-              {action}ing via <span className="font-bold">Waku</span>…
-            </h2>
-            <div className="border border-black bg-white mb-4">
-              <div className="bg-black text-white px-6 py-4">
-                <p className="font-(family-name:--font-pixel) text-[9px] text-purple-400 mb-1">Railgun</p>
-                <p className="text-sm font-bold capitalize">{action}ing via Waku broadcaster</p>
+          <div className="py-4">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-10 h-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin shrink-0" />
+              <div>
+                <p className="text-lg font-semibold capitalize">{action}ing via Waku…</p>
+                <p className="text-sm text-gray-500">Broadcasting through the Waku P2P network</p>
               </div>
-              <div className="p-6 space-y-4">
+            </div>
+            <div className="bg-white border border-[#e5e7eb] rounded-sm overflow-hidden mb-4">
+              <div className="bg-black text-white px-6 py-4">
+                <p className="font-(family-name:--font-pixel) text-[9px] text-purple-400 mb-0.5">Railgun</p>
+                <p className="text-sm font-semibold capitalize">{action}ing via Waku broadcaster</p>
+              </div>
+              <div className="p-5 space-y-3">
                 {steps.map((s, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <div className={`w-8 h-8 border flex items-center justify-center shrink-0 text-[10px] font-bold transition-all ${
-                      i < currentStep ? "bg-black border-black text-white" :
-                      i === currentStep ? "border-purple-500 text-purple-500 bg-purple-50" :
-                      "border-[#e5e7eb] text-gray-300 bg-[#f3f4f6]"
+                  <div key={i} className="flex items-center gap-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold transition-all ${
+                      i < currentStep ? "bg-green-500 text-white" :
+                      i === currentStep ? "bg-purple-500 text-white animate-pulse" :
+                      "bg-[#f3f4f6] text-gray-300 border border-[#e5e7eb]"
                     }`}>
-                      {i < currentStep ? "✓" : String(i + 1).padStart(2, "0")}
+                      {i < currentStep ? "✓" : i + 1}
                     </div>
-                    <span className={`text-sm ${i <= currentStep ? "text-black font-medium" : "text-gray-400"}`}>{s}</span>
+                    <span className={`text-sm transition-colors ${
+                      i < currentStep ? "text-gray-400 line-through" :
+                      i === currentStep ? "text-black font-semibold" : "text-gray-400"
+                    }`}>{s}</span>
                   </div>
                 ))}
               </div>
-              <div className="border-t border-[#e5e7eb] p-4">
-                <div className="w-full bg-[#e5e7eb] h-1.5">
-                  <div className="bg-purple-500 h-1.5 transition-all duration-700" style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }} />
+              <div className="border-t border-[#e5e7eb] px-5 py-3">
+                <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                  <span>Progress</span>
+                  <span className="font-semibold">{pct}%</span>
+                </div>
+                <div className="w-full bg-[#e5e7eb] rounded-full h-2">
+                  <div className="bg-purple-500 h-2 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {step === "done" && (
           <>
-            <div className="inline-flex items-center gap-2 px-3 py-1 border border-black text-xs font-bold uppercase tracking-widest mb-8">
-              ✓ {action.charAt(0).toUpperCase() + action.slice(1)} Complete
+            <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-sm mb-8">
+              <span className="text-green-600 text-lg font-bold">✓</span>
+              <div>
+                <p className="text-sm font-semibold text-green-800 capitalize">{action} complete</p>
+                <p className="text-xs text-green-600">Transaction confirmed on BNB Chain</p>
+              </div>
             </div>
-            <h2 className="text-3xl font-light tracking-tight mb-6">
-              Transaction <span className="font-bold">Successful</span>
-            </h2>
+
             {zkAddress && (
               <>
-                <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 mb-3">0zk Address (shielded)</h3>
-                <div className="border border-[#e5e7eb] p-4 font-mono text-xs break-all bg-[#f3f4f6] mb-6 leading-relaxed">{zkAddress}</div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-1">Your shielded address (0zk)</h3>
+                <p className="text-sm text-gray-400 mb-3">This is your Railgun address for receiving inside the private pool.</p>
+                <div className="border-2 border-[#e5e7eb] rounded-sm p-4 font-mono text-xs break-all bg-[#f3f4f6] mb-3 leading-relaxed">{zkAddress}</div>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(zkAddress); setZkCopied(true); setTimeout(() => setZkCopied(false), 2000); }}
+                  className={`text-sm font-semibold flex items-center gap-2 px-4 py-2 rounded-sm border-2 transition-all mb-6 ${
+                    zkCopied ? "bg-green-600 text-white border-green-600" : "border-[#e5e7eb] hover:border-black"
+                  }`}
+                >
+                  {zkCopied ? "✓ Copied" : "⎘ Copy address"}
+                </button>
               </>
             )}
+
             {poiProof && (
-              <>
-                <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 mb-3">Proof of Innocence</h3>
-                <div className="border border-[#e5e7eb] p-4 font-mono text-xs break-all bg-[#f3f4f6] mb-2 leading-relaxed">{poiProof}</div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-purple-500 mb-6">
-                  ZK-verified: no contact with sanctioned funds
+              <div className="bg-purple-50 border border-purple-200 rounded-sm p-5 mb-6">
+                <p className="text-sm font-semibold text-purple-800 mb-1">Proof of Innocence generated</p>
+                <p className="text-sm text-purple-600 mb-3 leading-relaxed">
+                  Cryptographically verified: your funds have no history with sanctioned wallets.
                 </p>
-              </>
+                <div className="font-mono text-xs break-all bg-white border border-purple-200 rounded-sm p-3 text-gray-700 leading-relaxed">{poiProof}</div>
+              </div>
             )}
-            <div className="border border-[#e5e7eb] bg-white flex justify-between px-5 py-4 mb-8">
-              <span className="text-xs text-gray-500">Gas paid by</span>
-              <span className="text-xs font-bold">Ghost Paymaster</span>
+
+            <div className="bg-white border border-[#e5e7eb] rounded-sm flex justify-between px-5 py-4 mb-8">
+              <span className="text-sm text-gray-500">Gas paid by</span>
+              <span className="text-sm font-semibold text-green-700">Ghost Paymaster</span>
             </div>
-            <button onClick={handleReset} className="btn-brutalist px-8 py-4 text-xs font-bold uppercase tracking-widest">
-              New Transaction
+            <button onClick={handleReset} className="btn-brutalist px-8 py-3.5 text-sm font-semibold">
+              New transaction
             </button>
           </>
         )}
       </div>
 
       {/* RIGHT */}
-      <div className="overflow-auto p-10 bg-[#f3f4f6]">
-        <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 mb-6">Railgun Architecture</h3>
-        <div className="border border-black bg-white mb-8">
+      <div className="overflow-auto p-8 bg-[#f3f4f6]">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 mb-4">How Railgun works</p>
+        <div className="bg-white border border-[#e5e7eb] rounded-sm overflow-hidden mb-6">
           {[
-            { n: "01", title: "Shield", desc: "Tokens enter a UTXO shielded pool. Your balance is hidden by a ZK-SNARK commitment." },
-            { n: "02", title: "Transact", desc: "Swap or transfer inside the pool. The blockchain only sees encrypted notes — no amounts, no addresses." },
-            { n: "03", title: "Unshield + POI", desc: "Exit with a Proof of Innocence — cryptographic proof your funds never touched sanctioned addresses." },
+            { n: "1", title: "Shield", desc: "Tokens enter a UTXO pool protected by ZK-SNARKs. Your balance is hidden from everyone." },
+            { n: "2", title: "Transact privately", desc: "Swap or transfer inside the pool. The chain only sees encrypted, meaningless data." },
+            { n: "3", title: "Unshield with POI", desc: "Exit with a cryptographic Proof of Innocence — clean funds, provably clean." },
           ].map(({ n, title, desc }, i, arr) => (
             <div key={n} className={`flex gap-4 p-5 ${i < arr.length - 1 ? "border-b border-[#e5e7eb]" : ""}`}>
-              <div className="w-8 h-8 bg-[#f3f4f6] border border-[#e5e7eb] flex items-center justify-center shrink-0 text-[10px] font-bold">{n}</div>
+              <div className="w-7 h-7 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center shrink-0 text-xs font-bold">{n}</div>
               <div>
-                <p className="text-sm font-bold mb-1">{title}</p>
-                <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
+                <p className="text-sm font-semibold mb-0.5">{title}</p>
+                <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400 mb-6">Fee Breakdown</h3>
-        <div className="border border-black bg-white mb-6">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 mb-4">Fee breakdown</p>
+        <div className="bg-white border border-[#e5e7eb] rounded-sm overflow-hidden mb-6">
           {[
-            { label: "Gas Cost", val: "0 BNB", accent: "text-green-600" },
-            { label: "Broadcaster Fee", val: `~0.003 ${token}` },
-            ...(action === "unshield" ? [{ label: "Proof of Innocence", val: "On exit", accent: "text-purple-500" }] : []),
+            { label: "Gas cost", val: "0 BNB", accent: "text-green-600" },
+            { label: "Broadcaster fee", val: `~0.003 ${token}`, accent: "" },
+            ...(action === "unshield" ? [{ label: "Proof of Innocence", val: "Generated on exit", accent: "text-purple-600" }] : []),
           ].map(({ label, val, accent }) => (
-            <div key={label} className="flex justify-between items-center px-5 py-4 border-b border-[#e5e7eb]">
-              <span className="text-xs text-gray-500">{label}</span>
-              <span className={`text-xs font-bold ${accent ?? ""}`}>{val}</span>
+            <div key={label} className="flex justify-between items-center px-5 py-3.5 border-b border-[#e5e7eb] last:border-b-0">
+              <span className="text-sm text-gray-500">{label}</span>
+              <span className={`text-sm font-semibold ${accent || "text-gray-900"}`}>{val}</span>
             </div>
           ))}
           <div className="flex justify-between items-center px-5 py-4 bg-black text-white">
-            <span className="text-xs font-bold uppercase tracking-widest">Sponsor</span>
-            <span className="text-xs font-bold">Ghost Paymaster</span>
+            <span className="text-sm font-semibold">Sponsor</span>
+            <span className="text-sm font-bold">Ghost Paymaster</span>
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-purple-500 text-purple-500 text-[9px] font-bold uppercase tracking-widest">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-sm text-purple-700 text-xs font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
           Track 4.2 · Railgun POI
         </div>
       </div>
