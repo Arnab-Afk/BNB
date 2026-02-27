@@ -16,7 +16,7 @@ export default function Home() {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-[#e5e7eb]">
+      <header className="sticky top-0 z-50 bg-white/50 backdrop-blur-xl border-b border-[#e5e7eb]/60">
         <nav className="container mx-auto px-6 h-14 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
@@ -28,9 +28,9 @@ export default function Home() {
           {/* Nav Links */}
           <div className="hidden md:flex items-center space-x-10 text-sm font-medium">
             <a className="hover:text-purple-500 transition-colors" href="#how-it-works">How It Works</a>
+            <a className="hover:text-purple-500 transition-colors" href="#compliance">Compliance</a>
             <a className="hover:text-purple-500 transition-colors" href="#ecosystem">Ecosystem</a>
             <a className="hover:text-purple-500 transition-colors" href="#developers">Developers</a>
-            <a className="hover:text-purple-500 transition-colors" href="#compliance">Compliance</a>
             <a className="hover:text-purple-500 transition-colors" href="#community">Community</a>
           </div>
 
