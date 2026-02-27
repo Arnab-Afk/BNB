@@ -284,7 +284,7 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border border-black">
               {/* Ghost Name Service */}
               <div className="p-10 border-b md:border-b-0 md:border-r border-black bg-white">
-                <div className="w-10 h-10 bg-[#f3f4f6] border border-[#e5e7eb] mb-8 flex items-center justify-center font-bold text-sm">GNS</div>
+
                 <h3 className="text-xl font-bold mb-3">Ghost Name Service</h3>
                 <p className="text-gray-500 text-sm leading-relaxed mb-6">
                   Register a <span className="font-mono text-black bg-gray-100 px-1 text-xs">ghost://username</span> handle that maps to your stealth address. Receive funds privately but share a human-readable name — like ENS, but for ZK wallets.
@@ -301,7 +301,7 @@ export default function Home() {
 
               {/* Chrome Extension */}
               <div className="p-10 bg-white">
-                <div className="w-10 h-10 bg-black text-white border border-black mb-8 flex items-center justify-center font-bold text-lg">👻</div>
+
                 <h3 className="text-xl font-bold mb-3">Ghost Mode Extension</h3>
                 <p className="text-gray-500 text-sm leading-relaxed mb-6">
                   A Chrome extension that intercepts MetaMask transactions at the <span className="font-mono text-black bg-gray-100 px-1 text-xs">window.ethereum</span> level. Toggle Ghost Mode ON — every transaction routes through Ghost automatically. No BNB needed. No manual steps. Privacy without thinking.
@@ -345,7 +345,7 @@ export default function Home() {
                 A 0–100 on-chain exposure meter for every wallet on BNB Chain. Pulls from public blockchain data and shows how traceable you are. Ghost users score higher — because privacy is provable.
               </p>
               <p className="text-gray-500 text-sm leading-relaxed mb-8">
-                Share your score. It&apos;s a flex. 🔥
+                Share your score.
               </p>
               <button className="bg-purple-500 text-white px-6 py-3 text-xs font-bold uppercase tracking-widest transition-all duration-150 -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0px_#000] hover:translate-x-0 hover:translate-y-0 hover:shadow-none">
                 Check Your Score →
