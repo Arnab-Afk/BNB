@@ -11,6 +11,7 @@
  * Zero value: keccak256("ghostpool") & (2^252 - 1)
  */
 
+import { createHash } from 'crypto';
 import { buildPoseidon } from 'circomlibjs';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
@@ -56,7 +57,6 @@ function poseidonHash(fn: PoseidonFn, left: bigint, right: bigint): bigint {
 // ─── Zero Hash Precomputation ─────────────────────────────────────────────────
 
 function computeZeroLeaf(): bigint {
-  const { createHash } = await import('crypto');
   const hash = createHash('sha256').update(ZERO_LEAF_PREIMAGE).digest();
   return BigInt('0x' + hash.toString('hex')) & FIELD_MASK;
 }

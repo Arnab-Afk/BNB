@@ -1,0 +1,305 @@
+import { ethers } from "hardhat";
+import { writeFileSync, mkdirSync, existsSync } from "fs";
+import { join } from "path";
+
+// ─── Chain Configuration ──────────────────────────────────────────────────────
+
+interface ChainConfig {
+    name: string;
+    entryPoint: string;
+    usdc: string | null;    // null = deploy MockERC20
+    usdt: string | null;    // null = deploy MockERC20
+    useRealHasher: boolean; // false = MockPoseidonHasher
+    useRealVerifier: boolean; // false = MockGroth16Verifier
+    merkleTreeHeight: number;
+    bnbToUsdcRate: bigint;  // BNB→USDC rate, scaled by 1e18
+    paymasterStake: bigint; // BNB to stake in EntryPoint (wei)
+    paymasterDeposit: bigint; // BNB to deposit for gas (wei)
+    unstakeDelay: number;   // seconds
+}
+
+// ERC-4337 EntryPoint v0.7 — same address on all chains
+const ENTRYPOINT_V07 = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
+
+const CHAIN_CONFIGS: Record<number, ChainConfig> = {
+    // ── BNB Chain Mainnet ────────────────────────────────────────────────────
+    56: {
+        name: "BNB Chain Mainnet",
+        entryPoint: ENTRYPOINT_V07,
+        usdc: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", // USDC (BSC native, 18 dp)
+        usdt: "0x55d398326f99059fF775485246999027B3197955", // USDT (BSC native, 18 dp)
+        useRealHasher: false,    // ← set true once PoseidonHasher has real constants
+        useRealVerifier: false,  // ← set true once ZK circuit + trusted setup is done
+        merkleTreeHeight: 20,
+        bnbToUsdcRate: 600n * 10n ** 18n,  // BNB ~$600, USDC mainnet has 18dp on BSC
+        paymasterStake: ethers.parseEther("0.5"),
+        paymasterDeposit: ethers.parseEther("1.0"),
+        unstakeDelay: 86400, // 24 hours
+    },
+
+    // ── BNB Testnet ──────────────────────────────────────────────────────────
+    97: {
+        name: "BNB Testnet",
+        entryPoint: ENTRYPOINT_V07,
+        usdc: null, // Deploy MockERC20
+        usdt: null, // Deploy MockERC20
+        useRealHasher: false,    // Mock Poseidon for testnet
+        useRealVerifier: false,  // Mock verifier — ZK proof always passes
+        merkleTreeHeight: 10,    // Smaller tree for faster testnet testing
+        bnbToUsdcRate: 600n * 10n ** 6n,  // Mock USDC has 6 decimals
+        paymasterStake: ethers.parseEther("0.05"),
+        paymasterDeposit: ethers.parseEther("0.1"),
+        unstakeDelay: 60, // 1 minute for testnet
+    },
+
+    // ── Hardhat Local ────────────────────────────────────────────────────────
+    31337: {
+        name: "Hardhat Local",
+        entryPoint: ENTRYPOINT_V07, // Fork or deploy locally
+        usdc: null,
+        usdt: null,
+        useRealHasher: false,
+        useRealVerifier: false,
+        merkleTreeHeight: 5, // Tiny tree for fast tests
+        bnbToUsdcRate: 600n * 10n ** 6n,
+        paymasterStake: ethers.parseEther("1"),
+        paymasterDeposit: ethers.parseEther("2"),
+        unstakeDelay: 0,
+    },
+};
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+async function main() {
+    const [deployer] = await ethers.getSigners();
+    const network = await ethers.provider.getNetwork();
+    const chainId = Number(network.chainId);
+
+    const cfg = CHAIN_CONFIGS[chainId];
+    if (!cfg) throw new Error(`No config for chainId ${chainId}. Add it to scripts/deploy.ts`);
+
+    const balance = await ethers.provider.getBalance(deployer.address);
+
+    console.log("\n╔══════════════════════════════════════════════════════════╗");
+    console.log("║          👻 GHOST PRIVACY SUITE — DEPLOY                ║");
+    console.log("╚══════════════════════════════════════════════════════════╝");
+    console.log(`\n  Network   : ${cfg.name} (chainId: ${chainId})`);
+    console.log(`  Deployer  : ${deployer.address}`);
+    console.log(`  Balance   : ${ethers.formatEther(balance)} BNB`);
+    console.log(`  EntryPoint: ${cfg.entryPoint}`);
+    console.log(`  Tree depth: ${cfg.merkleTreeHeight} levels (${2 ** cfg.merkleTreeHeight} max leaves)\n`);
+
+    const addresses: Record<string, string> = {
+        deployer: deployer.address,
+        entryPoint: cfg.entryPoint,
+        network: cfg.name,
+        chainId: chainId.toString(),
+        deployedAt: new Date().toISOString(),
+    };
+
+    // ── Step 1: USDC + USDT ──────────────────────────────────────────────────
+
+    let usdcAddress: string;
+    let usdtAddress: string;
+
+    if (cfg.usdc) {
+        console.log("✓  Using mainnet USDC:", cfg.usdc);
+        usdcAddress = cfg.usdc;
+    } else {
+        console.log("→  Deploying MockERC20 (USDC, 6 decimals)...");
+        const MockERC20 = await ethers.getContractFactory("MockERC20");
+        const mockUsdc = await MockERC20.deploy("USD Coin (Mock)", "USDC", 6);
+        await mockUsdc.waitForDeployment();
+        usdcAddress = await mockUsdc.getAddress();
+        console.log("✓  MockUSDC deployed:", usdcAddress);
+    }
+
+    if (cfg.usdt) {
+        console.log("✓  Using mainnet USDT:", cfg.usdt);
+        usdtAddress = cfg.usdt;
+    } else {
+        console.log("→  Deploying MockERC20 (USDT, 6 decimals)...");
+        const MockERC20 = await ethers.getContractFactory("MockERC20");
+        const mockUsdt = await MockERC20.deploy("Tether USD (Mock)", "USDT", 6);
+        await mockUsdt.waitForDeployment();
+        usdtAddress = await mockUsdt.getAddress();
+        console.log("✓  MockUSDT deployed:", usdtAddress);
+    }
+
+    addresses.USDC = usdcAddress;
+    addresses.USDT = usdtAddress;
+
+    // ── Step 2: Poseidon Hasher ──────────────────────────────────────────────
+
+    let hasherAddress: string;
+
+    if (cfg.useRealHasher) {
+        console.log("\n→  Deploying PoseidonHasher (real)...");
+        const PoseidonHasher = await ethers.getContractFactory("PoseidonHasher");
+        const hasher = await PoseidonHasher.deploy();
+        await hasher.waitForDeployment();
+        hasherAddress = await hasher.getAddress();
+        console.log("✓  PoseidonHasher deployed:", hasherAddress);
+    } else {
+        console.log("\n→  Deploying MockPoseidonHasher (keccak256-based, testnet only)...");
+        const MockHasher = await ethers.getContractFactory("MockPoseidonHasher");
+        const hasher = await MockHasher.deploy();
+        await hasher.waitForDeployment();
+        hasherAddress = await hasher.getAddress();
+        console.log("✓  MockPoseidonHasher deployed:", hasherAddress);
+        console.log("   ⚠️  ZK proofs will NOT be valid — swap for PoseidonHasher before mainnet!");
+    }
+
+    addresses.PoseidonHasher = hasherAddress;
+
+    // ── Step 3: Groth16 Verifier ─────────────────────────────────────────────
+
+    let verifierAddress: string;
+
+    if (cfg.useRealVerifier) {
+        // The real Groth16Verifier is generated by snarkjs:
+        //   snarkjs zkey export solidityverifier merkle_proof_final.zkey contracts/Groth16Verifier.sol
+        // Then compiled and deployed here.
+        console.log("\n→  Deploying Groth16Verifier (real, from snarkjs)...");
+        const Verifier = await ethers.getContractFactory("Groth16Verifier");
+        const verifier = await Verifier.deploy();
+        await verifier.waitForDeployment();
+        verifierAddress = await verifier.getAddress();
+        console.log("✓  Groth16Verifier deployed:", verifierAddress);
+    } else {
+        console.log("\n→  Deploying MockGroth16Verifier (always returns true)...");
+        const MockVerifier = await ethers.getContractFactory("MockGroth16Verifier");
+        const verifier = await MockVerifier.deploy();
+        await verifier.waitForDeployment();
+        verifierAddress = await verifier.getAddress();
+        console.log("✓  MockGroth16Verifier deployed:", verifierAddress);
+        console.log("   ⚠️  Any proof will pass — swap for real Groth16Verifier on mainnet!");
+    }
+
+    addresses.Groth16Verifier = verifierAddress;
+
+    // ── Step 4: GhostPool ───────────────────────────────────────────────────
+
+    console.log("\n→  Deploying GhostPool...");
+    console.log(`   hasher  : ${hasherAddress}`);
+    console.log(`   levels  : ${cfg.merkleTreeHeight}`);
+    console.log(`   USDC    : ${usdcAddress}`);
+    console.log(`   USDT    : ${usdtAddress}`);
+    console.log(`   owner   : ${deployer.address}`);
+
+    const GhostPool = await ethers.getContractFactory("GhostPool");
+    const pool = await GhostPool.deploy(
+        hasherAddress,
+        cfg.merkleTreeHeight,
+        usdcAddress,
+        usdtAddress,
+        deployer.address,
+    );
+    await pool.waitForDeployment();
+    const poolAddress = await pool.getAddress();
+    console.log("✓  GhostPool deployed:", poolAddress);
+
+    addresses.GhostPool = poolAddress;
+
+    // ── Step 5: GhostPaymaster ───────────────────────────────────────────────
+
+    console.log("\n→  Deploying GhostPaymaster...");
+    console.log(`   entryPoint    : ${cfg.entryPoint}`);
+    console.log(`   ghostPool     : ${poolAddress}`);
+    console.log(`   verifier      : ${verifierAddress}`);
+    console.log(`   bnbToUsdcRate : ${cfg.bnbToUsdcRate.toString()}`);
+    console.log(`   owner         : ${deployer.address}`);
+
+    const GhostPaymaster = await ethers.getContractFactory("GhostPaymaster");
+    const paymaster = await GhostPaymaster.deploy(
+        cfg.entryPoint,
+        poolAddress,
+        verifierAddress,
+        cfg.bnbToUsdcRate,
+        deployer.address,
+    );
+    await paymaster.waitForDeployment();
+    const paymasterAddress = await paymaster.getAddress();
+    console.log("✓  GhostPaymaster deployed:", paymasterAddress);
+
+    addresses.GhostPaymaster = paymasterAddress;
+
+    // ── Step 6: Wire — set Paymaster on Pool ─────────────────────────────────
+
+    console.log("\n→  Wiring: GhostPool.setPaymaster(GhostPaymaster)...");
+    const setPaymasterTx = await pool.setPaymaster(paymasterAddress);
+    await setPaymasterTx.wait();
+    console.log("✓  GhostPool now accepts fee deductions from GhostPaymaster");
+
+    // ── Step 7: Fund Paymaster ───────────────────────────────────────────────
+
+    const totalFunding = cfg.paymasterStake + cfg.paymasterDeposit;
+    const balanceAfterDeploy = await ethers.provider.getBalance(deployer.address);
+
+    if (balanceAfterDeploy < totalFunding) {
+        console.log(`\n⚠️  Insufficient balance for staking and deposit.`);
+        console.log(`   Need: ${ethers.formatEther(totalFunding)} BNB`);
+        console.log(`   Have: ${ethers.formatEther(balanceAfterDeploy)} BNB`);
+        console.log("   Skipping stake/deposit — run scripts/fund-paymaster.ts later.");
+    } else {
+        // Deposit BNB to EntryPoint (gas reserve for sponsorship)
+        console.log(`\n→  Depositing ${ethers.formatEther(cfg.paymasterDeposit)} BNB to EntryPoint...`);
+        const depositTx = await paymaster.depositToEntryPoint({ value: cfg.paymasterDeposit });
+        await depositTx.wait();
+        console.log("✓  Deposit complete");
+
+        // Stake BNB in EntryPoint (required for Paymasters)
+        console.log(`→  Staking ${ethers.formatEther(cfg.paymasterStake)} BNB with ${cfg.unstakeDelay}s delay...`);
+        const stakeTx = await paymaster.addStake(cfg.unstakeDelay, { value: cfg.paymasterStake });
+        await stakeTx.wait();
+        console.log("✓  Stake complete");
+    }
+
+    // ── Step 8: Summary ─────────────────────────────────────────────────────
+
+    console.log("\n╔══════════════════════════════════════════════════════════╗");
+    console.log("║                   DEPLOYMENT COMPLETE ✅                 ║");
+    console.log("╚══════════════════════════════════════════════════════════╝\n");
+    console.log("  Contract Addresses:");
+    console.log(`    GhostPool     : ${poolAddress}`);
+    console.log(`    GhostPaymaster: ${paymasterAddress}`);
+    console.log(`    Hasher        : ${hasherAddress}`);
+    console.log(`    Verifier      : ${verifierAddress}`);
+    console.log(`    USDC          : ${usdcAddress}`);
+    console.log(`    USDT          : ${usdtAddress}\n`);
+
+    if (chainId === 97) {
+        console.log("  BscScan Testnet:");
+        console.log(`    https://testnet.bscscan.com/address/${poolAddress}`);
+        console.log(`    https://testnet.bscscan.com/address/${paymasterAddress}\n`);
+    } else if (chainId === 56) {
+        console.log("  BscScan:");
+        console.log(`    https://bscscan.com/address/${poolAddress}`);
+        console.log(`    https://bscscan.com/address/${paymasterAddress}\n`);
+    }
+
+    // ── Step 9: Save addresses to file ──────────────────────────────────────
+
+    const deploymentsDir = join(__dirname, "..", "deployments", chainId.toString());
+    if (!existsSync(deploymentsDir)) mkdirSync(deploymentsDir, { recursive: true });
+
+    const outPath = join(deploymentsDir, "addresses.json");
+    writeFileSync(outPath, JSON.stringify(addresses, null, 2));
+    console.log(`  Addresses saved to: deployments/${chainId}/addresses.json`);
+    console.log("\n  Next steps:");
+    console.log("    1. Copy addresses into backend/.env");
+    console.log("    2. Copy addresses into frontend/.env.local");
+    if (!cfg.useRealVerifier) {
+        console.log("    3. ⚠️  Compile the ZK circuit and replace MockGroth16Verifier with real one");
+        console.log("       Run: cd circuits && circom merkle_proof.circom --r1cs --wasm --sym");
+        console.log("       Then: snarkjs groth16 setup + zkey export solidityverifier");
+    }
+    console.log("");
+}
+
+main()
+    .then(() => process.exit(0))
+    .catch((err) => {
+        console.error("\n❌ Deployment failed:", err.message);
+        process.exit(1);
+    });
