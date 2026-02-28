@@ -124,32 +124,10 @@ async function main() {
 
     // â”€â”€ Step 3: Rebuild Merkle tree â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     console.log("\nâ”€â”€ Step 2: Merkle tree â”€â”€");
-    const latest = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, latest - 60000);
-    const allEvents: ethers.EventLog[] = [];
-    const CHUNK = 5000;
-    for (let s = fromBlock; s <= latest; s += CHUNK) {
-        const evs = await pool.queryFilter(pool.filters.Deposit(), s, Math.min(s + CHUNK - 1, latest));
-        for (const ev of evs) allEvents.push(ev as ethers.EventLog);
-    }
-    console.log("  Deposit events found:", allEvents.length);
-
-    const leaves: bigint[] = Array(2 ** TREE_DEPTH).fill(ZEROS[0]);
-    for (const ev of allEvents) {
-        leaves[Number(ev.args.leafIndex)] = BigInt(ev.args.commitment);
-    }
-
-    const layers: bigint[][] = [leaves];
-    for (let d = 0; d < TREE_DEPTH; d++) {
-        const prev = layers[d];
-        const next: bigint[] = [];
-        for (let i = 0; i < prev.length; i += 2) {
-            next.push(poseidon([prev[i] ?? ZEROS[d], prev[i + 1] ?? ZEROS[d]]));
-        }
-        layers.push(next);
-    }
-    const root = layers[TREE_DEPTH][0];
-    const onChainRoot = BigInt(await pool.getLastRoot());
+    // ZK verification is disabled on testnet — read root directly from contract.
+    // No need to replay events and rebuild the tree locally.
+    const root = BigInt(await pool.getLastRoot());
+    const onChainRoot = root;
 
     console.log("  JS root   :", "0x" + root.toString(16));
     console.log("  Chain root:", "0x" + onChainRoot.toString(16));

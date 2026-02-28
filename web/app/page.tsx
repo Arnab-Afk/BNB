@@ -1,5 +1,6 @@
 import { FlickeringGrid } from "@/components/ui/flickering-grid";
 import { GlobeHero } from "@/components/ui/globe-hero";
+import { HyperText } from "@/components/ui/hyper-text";
 
 export default function Home() {
   return (
@@ -52,7 +53,7 @@ export default function Home() {
             </div>
             <h1 className="text-6xl md:text-8xl font-bold leading-[0.9] tracking-tighter mb-10">
               Privacy <br />
-              <span className="text-purple-500">Limitless</span> <br />
+              <HyperText as="span" className="text-purple-500 text-5xl md:text-7xl" startOnView animateOnHover>Limitless</HyperText> <br />
               for BNB Chain
             </h1>
             <p className="text-gray-500 text-sm md:text-base leading-relaxed max-w-lg mb-10 uppercase tracking-wider">

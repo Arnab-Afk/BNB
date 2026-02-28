@@ -53,8 +53,8 @@ async function main() {
     console.log(`  EP Deposit : ${ethers.formatEther(deposit)} BNB`);
     console.log(`  EP Stake   : ${ethers.formatEther(stake)} BNB\n`);
 
-    // Deposit 0.5 BNB for gas sponsorship
-    const depositAmount = ethers.parseEther("0.5");
+    // Deposit 0.1 BNB for gas sponsorship (reduced for testnet)
+    const depositAmount = ethers.parseEther("0.1");
     console.log(`→  Depositing ${ethers.formatEther(depositAmount)} BNB to EntryPoint...`);
     const depositTx = await paymaster.depositToEntryPoint({ value: depositAmount });
     await depositTx.wait();
@@ -62,7 +62,7 @@ async function main() {
 
     // Only add stake if not already staked
     if (stake === 0n) {
-        const stakeAmount = ethers.parseEther("0.1");
+        const stakeAmount = ethers.parseEther("0.05");
         const unstakeDelay = chainId === 56 ? 86400 : 60;
         console.log(`→  Staking ${ethers.formatEther(stakeAmount)} BNB (delay: ${unstakeDelay}s)...`);
         const stakeTx = await paymaster.addStake(unstakeDelay, { value: stakeAmount });

@@ -42,6 +42,7 @@ export default function RelayView({ wallet: walletProp = "", onWalletConnect }: 
   const [progress, setProgress] = useState<RelayProgress | null>(null);
   const [hashCopied, setHashCopied] = useState(false);
   const [smartAcct, setSmartAcct] = useState("");
+  const [gasReceipt, setGasReceipt] = useState<{ gasCostBnb: string; feeUsdc: string; nullifier: string } | null>(null);
 
   const wallet = walletProp || localWallet;
   const step = progress?.step ?? "form";
@@ -64,6 +65,41 @@ export default function RelayView({ wallet: walletProp = "", onWalletConnect }: 
       onWalletConnect?.(addr);
     } catch (e: unknown) { alert((e as Error).message); }
   }, [onWalletConnect]);
+
+  // Fetch GasSponsored event from receipt once relay is done
+  useEffect(() => {
+    if (step !== "done" || !txHash) return;
+    const GAS_SPONSORED_TOPIC = ethers.id("GasSponsored(address,bytes32,uint256,uint256,address)");
+    const GhostPaymaster_ABI = ["event GasSponsored(address indexed sender, bytes32 indexed nullifierHash, uint256 gasCostWei, uint256 feeUSDC, address feeToken)"];
+    const pmIface = new ethers.Interface(GhostPaymaster_ABI);
+    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL ?? "";
+    fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "eth_getTransactionReceipt", params: [txHash], id: 1 }),
+    })
+      .then(r => r.json())
+      .then((d: { result?: { logs?: { address: string; topics: string[]; data: string }[] } }) => {
+        const logs = d.result?.logs ?? [];
+        const log = logs.find(l =>
+          l.address.toLowerCase() === ADDRESSES.GhostPaymaster.toLowerCase() &&
+          l.topics[0] === GAS_SPONSORED_TOPIC
+        );
+        if (!log) return;
+        const parsed = pmIface.parseLog({ topics: log.topics, data: log.data });
+        if (!parsed) return;
+        const gasCostWei = parsed.args[2] as bigint;
+        const feeUSDC    = parsed.args[3] as bigint;
+        const nullifier  = parsed.args[1] as string;
+        setGasReceipt({
+          gasCostBnb: ethers.formatEther(gasCostWei),
+          feeUsdc:    ethers.formatUnits(feeUSDC, 6),
+          nullifier:  nullifier.slice(0, 18) + "…",
+        });
+      })
+      .catch(() => { /* silently ignore — non-critical */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, txHash]);
 
   // Recompute smart account preview when wallet or note changes
   useEffect(() => {
@@ -140,6 +176,7 @@ export default function RelayView({ wallet: walletProp = "", onWalletConnect }: 
     setCustomDest("");
     setCustomData("");
     setSmartAcct("");
+    setGasReceipt(null);
   }
 
   const shortWallet = wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : "";
@@ -426,6 +463,42 @@ export default function RelayView({ wallet: walletProp = "", onWalletConnect }: 
                 </div>
               ))}
             </div>
+
+            {/* ── Gas Sponsorship Receipt ── */}
+            {gasReceipt ? (
+              <div className="border-2 border-green-300 bg-green-50 rounded-sm p-4 mb-6">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-green-700 mb-3">⛽ Gas Sponsored by Ghost Paymaster</p>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Actual gas cost</span>
+                    <span className="font-mono font-bold text-green-900">{gasReceipt.gasCostBnb} BNB</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Fee deducted (USDC)</span>
+                    <span className="font-mono font-bold text-green-900">{gasReceipt.feeUsdc === '0.000000' ? 'absorbed by protocol' : gasReceipt.feeUsdc + ' USDC'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Nullifier spent</span>
+                    <span className="font-mono text-green-800">{gasReceipt.nullifier}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Your wallet paid</span>
+                    <span className="font-bold text-green-900">0 BNB</span>
+                  </div>
+                </div>
+                <a
+                  href={`https://testnet.bscscan.com/tx/${txHash}#eventlog`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="mt-3 block text-[10px] text-green-600 underline"
+                >
+                  View GasSponsored event on BscScan ↗
+                </a>
+              </div>
+            ) : step === "done" ? (
+              <div className="border border-green-200 bg-green-50 rounded-sm p-3 mb-6 text-xs text-green-600">
+                Loading gas receipt…
+              </div>
+            ) : null}
 
             <h3 className="text-base font-semibold mb-2">Transaction hash</h3>
             <div className="border-2 border-[#e5e7eb] rounded-sm p-4 font-mono text-xs break-all bg-[#f3f4f6] mb-3">{txHash}</div>
