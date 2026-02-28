@@ -42,10 +42,26 @@ const config: HardhatUserConfig = {
     },
 
     etherscan: {
-        apiKey: {
-            bsc: BSCSCAN_API_KEY,
-            bscTestnet: BSCSCAN_API_KEY,
-        },
+        // Single key for Etherscan v2 unified API (supports all chains via ?chainid=)
+        apiKey: BSCSCAN_API_KEY,
+        customChains: [
+            {
+                network: "bsc-testnet",
+                chainId: 97,
+                urls: {
+                    apiURL: "https://api.etherscan.io/v2/api?chainid=97",
+                    browserURL: "https://testnet.bscscan.com",
+                },
+            },
+            {
+                network: "bsc",
+                chainId: 56,
+                urls: {
+                    apiURL: "https://api.etherscan.io/v2/api?chainid=56",
+                    browserURL: "https://bscscan.com",
+                },
+            },
+        ],
     },
 
     gasReporter: {

@@ -283,6 +283,16 @@ export default function RelayView({ wallet: walletProp = "", onWalletConnect }: 
                       className="underline"
                     >BscScan</a>.
                   </p>
+                  <div className="flex gap-1.5 mb-2">
+                    {["0.2", "0.5", "1", "5", "10"].map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => setAmount(q)}
+                        className={`px-2.5 py-1 text-xs font-bold rounded-sm border transition-all ${amount === q ? "bg-black text-white border-black" : "bg-white border-[#e5e7eb] text-gray-600 hover:border-gray-400"}`}
+                      >{q}</button>
+                    ))}
+                  </div>
                   <div className="flex border-2 border-[#e5e7eb] rounded-sm overflow-hidden focus-within:border-black transition-colors">
                     <input
                       type="number"
@@ -290,7 +300,7 @@ export default function RelayView({ wallet: walletProp = "", onWalletConnect }: 
                       step="0.01"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      placeholder="1.0"
+                      placeholder="0.2"
                       className="flex-1 p-3 text-sm font-mono bg-white focus:outline-none"
                     />
                     <span className="bg-[#f3f4f6] px-4 flex items-center text-sm font-bold text-gray-500 border-l border-[#e5e7eb]">
@@ -439,80 +449,87 @@ export default function RelayView({ wallet: walletProp = "", onWalletConnect }: 
         {/* ── DONE ────────────────────────────────────────────────────── */}
         {step === "done" && (
           <>
-            <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-sm mb-6">
-              <span className="text-green-600 text-xl font-bold">✓</span>
-              <div>
-                <p className="text-sm font-semibold text-green-800">Transaction relayed successfully</p>
-                <p className="text-xs text-green-600">Real BNB gas paid by Ghost Paymaster · No on-chain link to depositor</p>
+            {/* ── Hero: THE MAIN MESSAGE ── */}
+            <div className="bg-black text-white rounded-sm p-7 mb-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-purple-400 mb-2">Ghost Paymaster · ERC-4337</p>
+              <p className="text-4xl font-black tracking-tight leading-none mb-1">0 BNB</p>
+              <p className="text-lg text-gray-300 font-light">paid from your wallet</p>
+              <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shrink-0" />
+                <p className="text-sm text-green-300 font-semibold">Gas fully sponsored on-chain · Verified by ZK proof</p>
               </div>
             </div>
 
+            {/* ── Live receipt from chain ── */}
+            {gasReceipt ? (
+              <div className="border-2 border-green-400 bg-green-50 rounded-sm overflow-hidden mb-6">
+                <div className="bg-green-500 text-white px-4 py-2 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-widest">⛽ Gas Sponsorship Receipt</span>
+                  <span className="text-[10px] font-mono opacity-80">live from chain</span>
+                </div>
+                <div className="divide-y divide-green-200">
+                  {[
+                    { label: "Actual BNB gas cost",   val: gasReceipt.gasCostBnb + " BNB",  bold: false },
+                    { label: "Fee charged (USDC)",     val: gasReceipt.feeUsdc === "0.000000" ? "absorbed by protocol" : gasReceipt.feeUsdc + " USDC", bold: false },
+                    { label: "Paid by",                val: "Ghost Paymaster",                bold: true  },
+                    { label: "Your wallet contributed", val: "0 BNB  ✓",                     bold: true  },
+                    { label: "Nullifier spent",        val: gasReceipt.nullifier,             bold: false },
+                  ].map(({ label, val, bold }) => (
+                    <div key={label} className="flex justify-between items-center px-4 py-3">
+                      <span className="text-xs text-green-700">{label}</span>
+                      <span className={`text-xs font-mono ${bold ? "font-black text-green-900 text-sm" : "text-green-800"}`}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-4 py-3 bg-green-100 border-t border-green-200">
+                  <a
+                    href={`https://testnet.bscscan.com/tx/${txHash}#eventlog`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="text-[11px] font-bold text-green-700 underline underline-offset-2"
+                  >
+                    View GasSponsored event on BscScan ↗
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 border border-green-200 bg-green-50 rounded-sm p-3 mb-6">
+                <div className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                <span className="text-xs text-green-600">Fetching gas receipt from chain…</span>
+              </div>
+            )}
+
+            {/* ── Transaction details ── */}
             <div className="bg-white border border-[#e5e7eb] rounded-sm overflow-hidden mb-6">
+              <div className="px-4 py-2.5 bg-[#f9fafb] border-b border-[#e5e7eb]">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Transaction Details</span>
+              </div>
               {[
-                { label: "Action performed", val: ACTION_OPTIONS.find(a => a.id === action)?.label ?? action, accent: "text-purple-700 font-bold" },
-                { label: "Gas currency", val: "BNB (real)", accent: "text-yellow-600 font-bold" },
-                { label: "Gas paid by", val: "Ghost Paymaster", accent: "text-green-700" },
-                { label: "Fee deducted from", val: `${noteInfo.token} pool deposit`, accent: "" },
-                { label: "On-chain link", val: "None", accent: "text-purple-600" },
-                { label: "ZK proof", val: "Verified on-chain (Groth16)", accent: "text-green-700" },
-                { label: "Smart account", val: smartAcct ? `${smartAcct.slice(0, 10)}…` : "deployed", accent: "text-gray-600 font-mono text-xs" },
-              ].map(({ label, val, accent }) => (
-                <div key={label} className="flex justify-between px-5 py-3.5 border-b border-[#e5e7eb] last:border-b-0">
-                  <span className="text-sm text-gray-500">{label}</span>
-                  <span className={`text-sm ${accent || "text-gray-900 font-semibold"}`}>{val}</span>
+                { label: "Action", val: ACTION_OPTIONS.find(a => a.id === action)?.label ?? action },
+                { label: "ZK proof", val: "Groth16 · verified on-chain" },
+                { label: "On-chain link to depositor", val: "None" },
+                { label: "Smart account", val: smartAcct ? `${smartAcct.slice(0, 10)}…${smartAcct.slice(-6)}` : "deployed" },
+              ].map(({ label, val }) => (
+                <div key={label} className="flex justify-between px-4 py-3 border-b border-[#e5e7eb] last:border-b-0">
+                  <span className="text-xs text-gray-500">{label}</span>
+                  <span className="text-xs font-semibold text-gray-900 font-mono">{val}</span>
                 </div>
               ))}
             </div>
 
-            {/* ── Gas Sponsorship Receipt ── */}
-            {gasReceipt ? (
-              <div className="border-2 border-green-300 bg-green-50 rounded-sm p-4 mb-6">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-green-700 mb-3">⛽ Gas Sponsored by Ghost Paymaster</p>
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Actual gas cost</span>
-                    <span className="font-mono font-bold text-green-900">{gasReceipt.gasCostBnb} BNB</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Fee deducted (USDC)</span>
-                    <span className="font-mono font-bold text-green-900">{gasReceipt.feeUsdc === '0.000000' ? 'absorbed by protocol' : gasReceipt.feeUsdc + ' USDC'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Nullifier spent</span>
-                    <span className="font-mono text-green-800">{gasReceipt.nullifier}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Your wallet paid</span>
-                    <span className="font-bold text-green-900">0 BNB</span>
-                  </div>
-                </div>
-                <a
-                  href={`https://testnet.bscscan.com/tx/${txHash}#eventlog`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="mt-3 block text-[10px] text-green-600 underline"
-                >
-                  View GasSponsored event on BscScan ↗
-                </a>
-              </div>
-            ) : step === "done" ? (
-              <div className="border border-green-200 bg-green-50 rounded-sm p-3 mb-6 text-xs text-green-600">
-                Loading gas receipt…
-              </div>
-            ) : null}
-
-            <h3 className="text-base font-semibold mb-2">Transaction hash</h3>
-            <div className="border-2 border-[#e5e7eb] rounded-sm p-4 font-mono text-xs break-all bg-[#f3f4f6] mb-3">{txHash}</div>
-            <div className="flex gap-3 mb-8">
+            {/* ── Tx hash + actions ── */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Transaction Hash</p>
+            <div className="border border-[#e5e7eb] rounded-sm p-3 font-mono text-xs break-all bg-[#f9fafb] mb-3">{txHash}</div>
+            <div className="flex gap-3 mb-6">
               <button
                 onClick={() => { navigator.clipboard.writeText(txHash); setHashCopied(true); setTimeout(() => setHashCopied(false), 2000); }}
-                className={`text-sm font-semibold flex items-center gap-2 px-4 py-2 rounded-sm border-2 transition-all btn-brutalist ${hashCopied ? "bg-green-600 text-white border-green-600" : "border-[#e5e7eb] hover:border-black"}`}
+                className={`text-xs font-bold flex items-center gap-2 px-4 py-2.5 rounded-sm border-2 transition-all btn-brutalist ${hashCopied ? "bg-green-600 text-white border-green-600" : "border-[#e5e7eb] hover:border-black"}`}
               >
-                {hashCopied ? "✓ Copied" : "⎘ Copy"}
+                {hashCopied ? "✓ Copied" : "⎘ Copy hash"}
               </button>
               <a
                 href={`https://testnet.bscscan.com/tx/${txHash}`}
                 target="_blank" rel="noopener noreferrer"
-                className="text-sm font-semibold flex items-center gap-2 px-4 py-2 rounded-sm border-2 border-[#e5e7eb] hover:border-black btn-brutalist"
+                className="text-xs font-bold flex items-center gap-2 px-4 py-2.5 rounded-sm border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-all btn-brutalist"
               >
                 View on BscScan ↗
               </a>
@@ -530,7 +547,7 @@ export default function RelayView({ wallet: walletProp = "", onWalletConnect }: 
               <span className="text-red-500 text-base shrink-0 mt-0.5">✕</span>
               <div>
                 <p className="text-sm font-semibold text-red-800">Relay failed</p>
-                <p className="text-sm text-red-600 mt-1 font-mono text-xs leading-relaxed break-all">{progress?.error}</p>
+                <p className="text-xs text-red-600 mt-1 font-mono leading-relaxed break-all">{progress?.error}</p>
               </div>
             </div>
             <button onClick={() => setProgress(null)} className="btn-brutalist px-6 py-3 text-sm font-semibold border-2 border-black">
