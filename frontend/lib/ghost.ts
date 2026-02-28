@@ -66,7 +66,8 @@ export interface PackedUserOperation {
 //                                                to avoid eth_maxPriorityFeePerGas
 //                                                and eth_getLogs range errors)
 
-const RPC_URL = "https://bsc-testnet.nodereal.io/v1/c282d0f1f2b74678b587e87980d22d5e";
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL
+    ?? (() => { throw new Error("Missing env: NEXT_PUBLIC_RPC_URL — add it to frontend/.env.local"); })();
 
 /** Read-only provider — talks directly to NodeReal, never through MetaMask. */
 export function getRpcProvider(): ethers.JsonRpcProvider {

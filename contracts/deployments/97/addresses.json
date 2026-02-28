@@ -3,12 +3,14 @@
   "entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
   "network": "BNB Testnet",
   "chainId": "97",
-  "deployedAt": "2026-02-27T16:30:44.567Z",
+  "deployedAt": "2026-02-28T02:22:35.346Z",
   "USDC": "0xC1d58E84ebFdCd4C29674C805a6CF53a21dC9D33",
   "USDT": "0xE0a53adFa5f64f45e81DDEFC770Ddf0DE3a92FFe",
   "PoseidonHasher": "0x432E4098133165D2f90E768fa73642236c6f910b",
   "Groth16Verifier": "0x61ac3A70Ed4CAab15dd547b374dd1BF7a519cdfA",
   "GhostPool": "0xd2c227909A77359b422C1BfEa6B482f2559eF6aa",
   "GhostPaymaster": "0xB5Be8a242feb47A40aE6BBC5C065b77Cec2eD6df",
-  "GhostSmartAccountFactory": "0x7D5eb77Bc8a3f2aDE845c450b9d97bfD20DDEda0"
+  "GhostSmartAccountFactory": "0x7D5eb77Bc8a3f2aDE845c450b9d97bfD20DDEda0",
+  "AssociationSetProvider": "0xA2Ed45b40aa963A73566E99962bB5EA7533D7ec0",
+  "GhostNameService": "0x599Bfb2954b0CD5ee8e4bE3eBD44884c880e9ad5"
 }

@@ -5,9 +5,23 @@
  */
 
 import { z } from 'zod';
-import { type UserOperation } from 'permissionless';
 import { type Hex, isAddress, isHex } from 'viem';
 import { config } from '../config.js';
+
+// ─── Local UserOperation v0.6 type (mirrors permissionless shape) ─────────────
+export interface UserOpV06 {
+  sender: Hex;
+  nonce: bigint;
+  initCode: Hex;
+  callData: Hex;
+  callGasLimit: bigint;
+  verificationGasLimit: bigint;
+  preVerificationGas: bigint;
+  maxFeePerGas: bigint;
+  maxPriorityFeePerGas: bigint;
+  paymasterAndData: Hex;
+  signature: Hex;
+}
 
 // ─── Zod Schema for incoming UserOp ──────────────────────────────────────────
 
@@ -56,7 +70,7 @@ export type RelayRequest = z.infer<typeof RelayRequestSchema>;
 /**
  * Convert a validated RelayRequest userOp into a permissionless UserOperation.
  */
-export function toUserOperation(input: UserOpInput): UserOperation<'v0.6'> {
+export function toUserOperation(input: UserOpInput): UserOpV06 {
   return {
     sender: input.sender as Hex,
     nonce: BigInt(input.nonce),

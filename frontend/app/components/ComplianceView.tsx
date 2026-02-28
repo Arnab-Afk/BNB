@@ -42,21 +42,53 @@ export default function ComplianceView() {
   const [keyCopied, setKeyCopied] = useState(false);
   const [txCount, setTxCount] = useState(0);
 
-  function handleExport() {
+  async function handleExport() {
     if (!wallet.trim()) return;
     setStep("loading");
-    setTimeout(() => {
-      const key =
-        "vk_" +
-        Array.from(crypto.getRandomValues(new Uint8Array(32)))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("") +
-        "_" +
-        Date.now().toString(36);
-      setViewingKey(key);
-      setTxCount(Math.floor(Math.random() * 80) + 12);
-      setStep("done");
-    }, 1200);
+
+    // Derive a deterministic viewing key from the wallet address.
+    // This is a simplified HMAC-style derivation — in prod, use BabyJubJub private key.
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode("ghost-viewing-key-v1"),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const sig = await crypto.subtle.sign("HMAC", keyMaterial, encoder.encode(wallet.toLowerCase()));
+    const keyHex = Array.from(new Uint8Array(sig))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const viewingKeyFormatted = `vk_${keyHex.slice(0, 16)}_${Date.now().toString(36)}`;
+
+    // Try to get real deposit count from backend pool status
+    let realTxCount = 0;
+    try {
+      const res = await fetch("http://localhost:3001/v1/pool/status");
+      if (res.ok) {
+        const data = await res.json() as { totalDeposits?: number };
+        realTxCount = data.totalDeposits ?? 0;
+      }
+    } catch {
+      // Backend not running locally — use the on-chain merkle leaf count
+      try {
+        const { ethers } = await import("ethers");
+        const provider = new ethers.JsonRpcProvider(
+          process.env.NEXT_PUBLIC_RPC_URL ?? "https://bsc-testnet.nodereal.io/v1/c282d0f1f2b74678b587e87980d22d5e"
+        );
+        const pool = new ethers.Contract(
+          process.env.NEXT_PUBLIC_GHOST_POOL ?? "0xd2c227909A77359b422C1BfEa6B482f2559eF6aa",
+          ["function nextLeafIndex() view returns (uint256)"],
+          provider,
+        );
+        realTxCount = Number(await pool.nextLeafIndex());
+      } catch { /* network unavailable — leave at 0 */ }
+    }
+
+    setViewingKey(viewingKeyFormatted);
+    setTxCount(realTxCount);
+    setStep("done");
   }
 
   function handleReset() {
@@ -78,11 +110,10 @@ export default function ComplianceView() {
         <div className="bg-white border border-[#e5e7eb] rounded-sm overflow-hidden mb-10">
           {CHECKS.map(({ title, desc, status }, i) => (
             <div key={title} className={`flex gap-4 p-5 ${i < CHECKS.length - 1 ? "border-b border-[#e5e7eb]" : ""}`}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-sm font-bold transition-colors ${
-                status === "pass"
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-sm font-bold transition-colors ${status === "pass"
                   ? "bg-green-100 text-green-600"
                   : "bg-amber-100 text-amber-600"
-              }`}>
+                }`}>
                 {status === "pass" ? "✓" : "~"}
               </div>
               <div>
@@ -154,9 +185,8 @@ export default function ComplianceView() {
               <div className="flex gap-3 mb-6">
                 <button
                   onClick={() => { navigator.clipboard.writeText(viewingKey); setKeyCopied(true); setTimeout(() => setKeyCopied(false), 2500); }}
-                  className={`flex items-center gap-2 px-4 py-2.5 border-2 rounded-sm text-sm font-semibold transition-all ${
-                    keyCopied ? "bg-green-600 text-white border-green-600" : "border-[#e5e7eb] hover:border-black"
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2.5 border-2 rounded-sm text-sm font-semibold transition-all ${keyCopied ? "bg-green-600 text-white border-green-600" : "border-[#e5e7eb] hover:border-black"
+                    }`}
                 >
                   {keyCopied ? "✓ Copied!" : "⎘ Copy key"}
                 </button>

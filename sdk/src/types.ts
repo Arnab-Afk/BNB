@@ -4,6 +4,10 @@ export interface Note {
   commitment: string;
   amount?: string;
   token?: string;
+  /** On-chain Merkle tree leaf index — set after deposit confirmation */
+  leafIndex?: number;
+  /** Ghost note encoded string — ghost:v1:... — save to restore the note */
+  raw?: string;
 }
 
 export interface GhostWalletConfig {

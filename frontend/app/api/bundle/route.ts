@@ -20,9 +20,16 @@ import { ethers } from "ethers";
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
-const RPC_URL = "https://bsc-testnet.nodereal.io/v1/c282d0f1f2b74678b587e87980d22d5e";
-const PRIVATE_KEY = "1437c6e656c9afd75cae09210d80ea969aa614cba8a144ea9a8371e173332ddb";
-const ENTRY_POINT = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
+const PRIVATE_KEY = process.env.BUNDLER_PRIVATE_KEY;
+const ENTRY_POINT = process.env.NEXT_PUBLIC_ENTRY_POINT ?? "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
+
+if (!RPC_URL) throw new Error("Missing env: NEXT_PUBLIC_RPC_URL");
+if (!PRIVATE_KEY) throw new Error("Missing env: BUNDLER_PRIVATE_KEY");
+
+// After guards both are definitely strings — help TypeScript
+const _RPC = RPC_URL as string;
+const _PK = PRIVATE_KEY as string;
 
 const ENTRY_POINT_ABI = [
     `function handleOps(
@@ -51,8 +58,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing userOp in request body" }, { status: 400 });
         }
 
-        const provider = new ethers.JsonRpcProvider(RPC_URL);
-        const bundler = new ethers.Wallet(PRIVATE_KEY, provider);
+        const provider = new ethers.JsonRpcProvider(_RPC);
+        const bundler = new ethers.Wallet(_PK, provider);
         const entryPoint = new ethers.Contract(ENTRY_POINT, ENTRY_POINT_ABI, bundler);
 
         console.log("[bundler] Submitting UserOp for sender:", userOp.sender);
