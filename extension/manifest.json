@@ -1,0 +1,58 @@
+{
+    "manifest_version": 3,
+    "name": "Ghost Privacy",
+    "short_name": "Ghost",
+    "version": "1.0.0",
+    "description": "Compliant, gasless, ZK-proven private transactions on BNB Chain.",
+    "icons": {
+        "16": "icons/16.png",
+        "48": "icons/48.png",
+        "128": "icons/128.png"
+    },
+    "action": {
+        "default_popup": "popup/popup.html",
+        "default_icon": {
+            "16": "icons/16.png",
+            "48": "icons/48.png",
+            "128": "icons/128.png"
+        }
+    },
+    "background": {
+        "service_worker": "background/serviceWorker.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://*/*",
+                "http://localhost/*"
+            ],
+            "js": [
+                "content/interceptor.js"
+            ],
+            "run_at": "document_start",
+            "all_frames": false
+        }
+    ],
+    "permissions": [
+        "storage",
+        "tabs",
+        "activeTab",
+        "scripting",
+        "notifications"
+    ],
+    "host_permissions": [
+        "https://*/*",
+        "http://localhost/*"
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "icons/*"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
+}
