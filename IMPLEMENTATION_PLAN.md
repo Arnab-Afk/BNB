@@ -1,8 +1,8 @@
 # 👻 Ghost Privacy Suite — End-to-End Implementation Plan
 
-> **Project:** Ghost — Compliant, full-stack privacy infrastructure for BNB Chain  
-> **Tracks:** BNB Chain × YZI Labs Hack Bengaluru — Track 4.1 (Gas Relayer) · 4.2 (Privacy SDK) · 4.3 (Railgun)  
-> **Status:** Active development — core contracts and backend relayer are functional; SDK, circuits, and frontend DApp are pending.
+> **Project:** Ghost — Compliant, full-stack privacy infrastructure for BNB Chain
+> **Tracks:** BNB Chain × YZI Labs Hack Bengaluru — Track 4.1 (Gas Relayer) · 4.2 (Privacy SDK) · 4.3 (Railgun)
+> **Status:** ✅ Core implementation complete — contracts deployed, backend wired, Railgun integrated, frontend live
 
 ---
 
@@ -63,35 +63,34 @@
 
 | Component | Status | Completion |
 |-----------|--------|------------|
-| `GhostPool.sol` | ✅ Complete | 100% |
-| `GhostPaymaster.sol` | ✅ Complete | 100% |
-| `PoseidonHasher.sol` | ✅ Complete | 100% |
-| Contract interfaces & mocks | ✅ Complete | 100% |
-| `AssociationSetProvider.sol` | ❌ Not started | 0% |
-| `Groth16Verifier.sol` | ❌ Not started | 0% |
-| `RailgunAdapter.sol` | ❌ Not started | 0% |
-| `GhostNameService.sol` | ❌ Not started | 0% |
-| Contract deploy scripts | ❌ Not started | 0% |
+| `GhostPool.sol` | ✅ Deployed (BSC Testnet) | 100% |
+| `GhostPaymaster.sol` | ✅ Deployed (BSC Testnet) | 100% |
+| `PoseidonHasher.sol` | ✅ Deployed (BSC Testnet) | 100% |
+| `Groth16Verifier.sol` | ✅ Deployed (BSC Testnet) | 100% |
+| `AssociationSetProvider.sol` | ✅ Deployed (BSC Testnet) | 100% |
+| `GhostNameService.sol` | ✅ Deployed (BSC Testnet) | 100% |
+| Contract deploy scripts | ✅ `deploy.ts` + `deploy-new-contracts.ts` | 100% |
 | Contract tests | ❌ Not started | 0% |
+| `RailgunAdapter.sol` | ❌ Not started | 0% |
 | Backend API routes (relay + pool) | ✅ Complete | 100% |
 | Backend compliance (OFAC + ASP) | ✅ Complete | 100% |
 | Backend ZK verifier (off-chain) | ✅ Complete | 100% |
 | Backend Merkle tree manager | ✅ Complete | 100% |
-| Backend BullMQ relay worker | ✅ Complete | 100% |
-| Backend bundler/paymaster clients | ✅ Complete | 100% |
-| Backend Prisma schema + repos | ✅ Complete | 100% |
+| Backend BullMQ relay worker | ✅ Complete (permissionless removed) | 100% |
+| Backend bundler client | ✅ Rewritten — direct JSON-RPC (no permissionless) | 100% |
+| Backend Prisma schema + repos | ✅ Complete — all 5 models, field names aligned | 100% |
 | Backend middleware & config | ✅ Complete | 100% |
-| Backend `src/index.ts` (entry) | ❌ Not started | 0% |
-| Backend Railgun / Waku module | ❌ Not started | 0% |
+| Backend `src/index.ts` | ✅ Fully wired (Railgun, indexer, queue, routes) | 100% |
+| **Backend Railgun module** | ✅ **Complete — engine, shield, unshield, routes** | 100% |
+| Backend deposit indexer | ✅ `depositIndexer.ts` — event-based + historical sync | 100% |
 | Backend Venus yield module | ❌ Not started | 0% |
-| Backend contract event indexer | ❌ Not started | 0% |
 | Backend tests | ❌ Not started | 0% |
-| ZK circuits (`merkle_proof.circom`) | ❌ Not started | 0% |
-| `@ghost-privacy/sdk` | ❌ Not started | 0% |
-| Frontend DApp (functional) | ❌ Not started (placeholder only) | 5% |
+| ZK circuits (`merkle_proof.circom`) | ✅ Compiled, trusted setup done, WASM in browser | 100% |
+| `@ghost-privacy/sdk` rewrites | ✅ GhostWallet, ProofBuilder, GhostClient, UserOpBuilder | 100% |
+| Frontend DApp (views) | ✅ All views wired; RailgunView calls real backend | 95% |
 | `web/` marketing landing page | ✅ Complete | 100% |
 | Chrome Extension | ❌ Not started | 0% |
-| Docker Compose | ❌ Not started | 0% |
+| Docker Compose | ✅ Created | 100% |
 | GitHub Actions CI/CD | ❌ Not started | 0% |
 
 ---

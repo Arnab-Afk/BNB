@@ -53,7 +53,8 @@ export function createRelayWorker(): Worker<RelayJobData> {
   const worker = new Worker<RelayJobData>(
     RELAY_QUEUE_NAME,
     async (job: Job<RelayJobData>) => {
-      const { operationId, relayRequest } = job.data;
+      const { operationId: operationIdStr, relayRequest } = job.data;
+      const operationId = parseInt(operationIdStr, 10);
       const { userOp, publicSignals } = relayRequest;
       const nullifierHash = publicSignals[1]!;
 

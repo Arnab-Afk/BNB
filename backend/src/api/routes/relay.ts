@@ -123,15 +123,15 @@ const relayRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       // ── Mark nullifier as pending ────────────────────────────────────────
-      await nullifierRepo.markPending(nullifierHash, operation.id);
+      await nullifierRepo.markPending(nullifierHash, operation.id.toString());
 
       // ── Enqueue relay job ─────────────────────────────────────────────────
-      await enqueueRelayJob(operation.id, parseResult.data);
+      await enqueueRelayJob(operation.id.toString(), parseResult.data);
 
       logger.info({ operationId: operation.id, sender: userOp.sender }, 'Relay job queued');
 
       return reply.status(202).send({
-        jobId: operation.id,
+        jobId: operation.id.toString(),
         status: 'queued',
         message: 'UserOperation accepted. Use /v1/relay/status/:jobId to track.',
       });
@@ -144,7 +144,7 @@ const relayRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { jobId } = request.params;
 
-      const operation = await operationRepo.findById(jobId);
+      const operation = await operationRepo.findById(parseInt(jobId, 10));
       if (!operation) {
         return reply.status(404).send({
           error: 'NOT_FOUND',
