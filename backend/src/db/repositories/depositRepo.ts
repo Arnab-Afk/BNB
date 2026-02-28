@@ -14,7 +14,19 @@ export interface CreateDepositInput {
 
 export const depositRepo = {
   async create(input: CreateDepositInput): Promise<Deposit> {
-    return prisma.deposit.create({ data: input });
+    return prisma.deposit.create({
+      data: {
+        commitment: input.commitment,
+        leafIndex: input.leafIndex,
+        merkleRoot: input.merkleRoot,
+        amount: input.amount,
+        token: input.token,
+        tokenAddress: input.token, // mirror token field in tokenAddress column
+        txHash: input.txHash,
+        blockNumber: input.blockNumber ?? 0n,
+        depositor: input.depositor,
+      },
+    });
   },
 
   async findByCommitment(commitment: string): Promise<Deposit | null> {

@@ -31,10 +31,12 @@ Everything below is live on **BSC Testnet (chainId 97)** and has been end-to-end
 | **GhostSmartAccountFactory** | `0x7D5eb77Bc8a3f2aDE845c450b9d97bfD20DDEda0` | [View](https://testnet.bscscan.com/address/0x7D5eb77Bc8a3f2aDE845c450b9d97bfD20DDEda0) |
 | **Groth16Verifier** | `0x61ac3A70Ed4CAab15dd547b374dd1BF7a519cdfA` | [View](https://testnet.bscscan.com/address/0x61ac3A70Ed4CAab15dd547b374dd1BF7a519cdfA) |
 | **PoseidonHasher** | `0x432E4098133165D2f90E768fa73642236c6f910b` | [View](https://testnet.bscscan.com/address/0x432E4098133165D2f90E768fa73642236c6f910b) |
+| **AssociationSetProvider** | see `backend/.env` → `ASP_CONTRACT_ADDRESS` | BSC Testnet |
+| **GhostNameService** | see `backend/.env` → `GNS_CONTRACT_ADDRESS` | BSC Testnet |
 | **Mock USDC** | `0xC1d58E84ebFdCd4C29674C805a6CF53a21dC9D33` | [View](https://testnet.bscscan.com/address/0xC1d58E84ebFdCd4C29674C805a6CF53a21dC9D33) |
 | **Mock USDT** | `0xE0a53adFa5f64f45e81DDEFC770Ddf0DE3a92FFe` | [View](https://testnet.bscscan.com/address/0xE0a53adFa5f64f45e81DDEFC770Ddf0DE3a92FFe) |
 
-**Deployed:** 2026-02-27T16:30:44Z by `0x90e6a10271D31EA4EA29B66D48e6f078C4091f77`
+**Deployed:** 2026-02-27/28 by `0x90e6a10271D31EA4EA29B66D48e6f078C4091f77`
 
 ---
 
