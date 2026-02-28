@@ -21,7 +21,7 @@ export const operationRepo = {
     });
   },
 
-  async findById(id: string): Promise<RelayOperation | null> {
+  async findById(id: number): Promise<RelayOperation | null> {
     return prisma.relayOperation.findUnique({ where: { id } });
   },
 
@@ -30,7 +30,7 @@ export const operationRepo = {
   },
 
   async updateStatus(
-    id: string,
+    id: number,
     status: OperationStatus,
     extras?: Partial<Pick<RelayOperation, 'txHash' | 'blockNumber' | 'gasUsed' | 'errorMessage' | 'userOpHash' | 'completedAt'>>,
   ): Promise<RelayOperation> {
@@ -40,7 +40,7 @@ export const operationRepo = {
     });
   },
 
-  async markCompleted(id: string, txHash: string, blockNumber: bigint, gasUsed: string): Promise<RelayOperation> {
+  async markCompleted(id: number, txHash: string, blockNumber: bigint, gasUsed: string): Promise<RelayOperation> {
     return prisma.relayOperation.update({
       where: { id },
       data: {
@@ -54,7 +54,7 @@ export const operationRepo = {
     });
   },
 
-  async markFailed(id: string, errorMessage: string): Promise<RelayOperation> {
+  async markFailed(id: number, errorMessage: string): Promise<RelayOperation> {
     return prisma.relayOperation.update({
       where: { id },
       data: {

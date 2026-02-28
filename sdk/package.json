@@ -22,7 +22,8 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@zk-kit/baby-jubjub": "^1.0.3",
+    "circomlibjs": "^0.1.7",
+    "ethers": "^6.0.0",
     "permissionless": "^0.1.0",
     "snarkjs": "^0.7.0",
     "viem": "^2.0.0"
@@ -32,6 +33,7 @@
     "react": "^18.0.0"
   },
   "devDependencies": {
+    "@types/circomlibjs": "*",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/snarkjs": "^0.7.8",

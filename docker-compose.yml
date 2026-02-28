@@ -1,0 +1,94 @@
+version: "3.9"
+
+# Ghost Privacy Suite — local dev stack
+# Starts Postgres + Redis + the Ghost backend API
+#
+# Usage:
+#   docker compose up          # start everything
+#   docker compose up -d       # start in background
+#   docker compose down -v     # stop + remove volumes
+
+services:
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ghost_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ghost
+      POSTGRES_PASSWORD: ghostpass
+      POSTGRES_DB: ghostpaymaster
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ghost -d ghostpaymaster"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis (BullMQ queue) ──────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ghost_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Ghost Backend API ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ghost_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      DATABASE_URL: postgresql://ghost:ghostpass@postgres:5432/ghostpaymaster
+      REDIS_URL: redis://redis:6379
+      BNB_TESTNET_RPC_URL: ${BNB_TESTNET_RPC_URL:-https://bsc-testnet.nodereal.io/v1/c282d0f1f2b74678b587e87980d22d5e}
+      BNB_RPC_URL: ${BNB_RPC_URL:-https://bsc-dataseed.binance.org/}
+      CHAIN_ID: ${CHAIN_ID:-97}
+      RELAYER_PRIVATE_KEY: ${RELAYER_PRIVATE_KEY}
+      RELAYER_ADDRESS: ${RELAYER_ADDRESS}
+      PAYMASTER_CONTRACT_ADDRESS: ${PAYMASTER_CONTRACT_ADDRESS:-0xB5Be8a242feb47A40aE6BBC5C065b77Cec2eD6df}
+      GHOST_POOL_ADDRESS: ${GHOST_POOL_ADDRESS:-0xd2c227909A77359b422C1BfEa6B482f2559eF6aa}
+      ENTRYPOINT_ADDRESS: ${ENTRYPOINT_ADDRESS:-0x0000000071727De22E5E9d8BAf0edAc6f37da032}
+      BUNDLER_URL: ${BUNDLER_URL}
+      PIMLICO_API_KEY: ${PIMLICO_API_KEY:-}
+      CIRCUIT_WASM_PATH: ./src/zk/circuits/merkle_proof.wasm
+      CIRCUIT_ZKEY_PATH: ./src/zk/circuits/merkle_proof_final.zkey
+      CIRCUIT_VERIFICATION_KEY_PATH: ./src/zk/circuits/verification_key.json
+      MERKLE_TREE_HEIGHT: ${MERKLE_TREE_HEIGHT:-10}
+      OFAC_SYNC_INTERVAL_MS: 3600000
+      CHAINALYSIS_API_KEY: ${CHAINALYSIS_API_KEY:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend/src/zk/circuits:/app/src/zk/circuits:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  redis_data:

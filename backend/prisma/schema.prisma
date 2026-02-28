@@ -1,0 +1,103 @@
+// Prisma schema — matches the field names used by backend repositories
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Deposit (shielded note indexed from GhostPool events) ─────────────────────
+
+model Deposit {
+  id           Int      @id @default(autoincrement())
+  commitment   String   @unique
+  leafIndex    Int
+  merkleRoot   String   @default("")
+  tokenAddress String
+  token        String   @default("")
+  amount       String
+  depositor    String?
+  blockNumber  BigInt
+  txHash       String   @unique
+  createdAt    DateTime @default(now())
+
+  @@map("deposits")
+}
+
+// ── Spent nullifier ───────────────────────────────────────────────────────────
+
+enum NullifierStatus {
+  PENDING
+  SPENT
+  REVERTED
+}
+
+model Nullifier {
+  id            Int             @id @default(autoincrement())
+  hash          String          @unique
+  status        NullifierStatus @default(PENDING)
+  operationId   String?
+  txHash        String?
+  spentAt       DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("nullifiers")
+}
+
+// ── Relay operation ────────────────────────────────────────────────────────────
+
+enum OperationStatus {
+  QUEUED
+  PROCESSING
+  SUBMITTED
+  COMPLETED
+  FAILED
+}
+
+model RelayOperation {
+  id            Int             @id @default(autoincrement())
+  userOpHash    String?         @unique
+  sender        String
+  merkleRoot    String          @default("")
+  nullifierHash String          @default("")
+  chainId       Int             @default(97)
+  status        OperationStatus @default(QUEUED)
+  txHash        String?
+  blockNumber   BigInt?
+  gasUsed       String?
+  errorMessage  String?
+  completedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("relay_operations")
+}
+
+// ── Merkle Tree State (persists tree across restarts) ─────────────────────────
+
+model MerkleTreeState {
+  id              String   @id @default("singleton")
+  nextIndex       Int      @default(0)
+  root            String   @default("0")
+  currentRoot     String   @default("0")
+  treeHeight      Int      @default(20)
+  levels          Int      @default(20)
+  filledSubtrees  Json     @default("{}")
+  updatedAt       DateTime @updatedAt
+
+  @@map("merkle_tree_state")
+}
+
+model BlockedAddress {
+  id        Int      @id @default(autoincrement())
+  address   String   @unique
+  reason    String   @default("OFAC_SDN")
+  source    String   @default("OFAC")
+  addedAt   DateTime @default(now())
+
+  @@map("blocked_addresses")
+}

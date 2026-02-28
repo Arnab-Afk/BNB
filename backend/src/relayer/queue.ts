@@ -7,19 +7,21 @@
  */
 
 import { Queue, Worker, type Job } from 'bullmq';
-import IORedis from 'ioredis';
+import { Redis } from 'ioredis';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { operationRepo } from '../db/repositories/operationRepo.js';
 import { nullifierRepo } from '../db/repositories/nullifierRepo.js';
 import { sendUserOperation, waitForUserOperation } from './bundlerClient.js';
-import { toUserOperation, type RelayRequest } from './userOpBuilder.js';
+import { type RelayRequest } from './userOpBuilder.js';
 
-// ─── Redis Connection ─────────────────────────────────────────────────────────
+// ─── Redis connection options for BullMQ ─────────────────────────────────────
+// BullMQ bundles its own ioredis — pass URL string directly to avoid type conflicts.
+const redisConnection = { url: config.REDIS_URL } as const;
+export const redis = redisConnection;
 
-export const redis = new IORedis(config.REDIS_URL, {
-  maxRetriesPerRequest: null, // Required by BullMQ
-});
+// Separate ioredis client for health checks and graceful shutdown
+export const redisClient = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 
 // ─── Queue Definition ─────────────────────────────────────────────────────────
 
@@ -51,7 +53,8 @@ export function createRelayWorker(): Worker<RelayJobData> {
   const worker = new Worker<RelayJobData>(
     RELAY_QUEUE_NAME,
     async (job: Job<RelayJobData>) => {
-      const { operationId, relayRequest } = job.data;
+      const { operationId: operationIdStr, relayRequest } = job.data;
+      const operationId = parseInt(operationIdStr, 10);
       const { userOp, publicSignals } = relayRequest;
       const nullifierHash = publicSignals[1]!;
 
@@ -60,13 +63,10 @@ export function createRelayWorker(): Worker<RelayJobData> {
       // Mark as processing
       await operationRepo.updateStatus(operationId, 'PROCESSING');
 
-      // Convert to permissionless UserOperation type
-      const operation = toUserOperation(userOp);
-
-      // Send to bundler
+      // Send to bundler — userOp fields are already hex strings from Zod validation
       let userOpHash: `0x${string}`;
       try {
-        userOpHash = await sendUserOperation(operation);
+        userOpHash = await sendUserOperation(userOp);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         await operationRepo.markFailed(operationId, `Bundler rejected: ${msg}`);
@@ -91,19 +91,19 @@ export function createRelayWorker(): Worker<RelayJobData> {
       // Mark as completed
       await operationRepo.markCompleted(
         operationId,
-        receipt.receipt.transactionHash,
-        receipt.receipt.blockNumber,
-        receipt.receipt.gasUsed.toString(),
+        receipt.transactionHash,
+        receipt.blockNumber,
+        '',    // gasUsed not returned by eth_getUserOperationReceipt directly
       );
 
       // Mark nullifier as definitively spent
-      await nullifierRepo.markSpent(nullifierHash, receipt.receipt.transactionHash);
+      await nullifierRepo.markSpent(nullifierHash, receipt.transactionHash);
 
       logger.info(
         {
           operationId,
-          txHash: receipt.receipt.transactionHash,
-          blockNumber: receipt.receipt.blockNumber.toString(),
+          txHash: receipt.transactionHash,
+          blockNumber: receipt.blockNumber.toString(),
         },
         'Relay job completed successfully',
       );
@@ -143,8 +143,8 @@ export async function enqueueRelayJob(
 
 export async function checkQueueHealth(): Promise<boolean> {
   try {
-    const client = await redis.ping();
-    return client === 'PONG';
+    const pong = await redisClient.ping();
+    return pong === 'PONG';
   } catch {
     return false;
   }
@@ -160,7 +160,7 @@ if (isMain) {
   process.on('SIGTERM', async () => {
     logger.info('Worker shutting down…');
     await worker.close();
-    await redis.quit();
+    await redisClient.quit();
     process.exit(0);
   });
 }

@@ -9,15 +9,17 @@ import { logger } from './utils/logger.js';
 import { connectDatabase, disconnectDatabase } from './db/prisma/client.js';
 import { merkleTree } from './zk/merkleTree.js';
 import { startOfacSyncJob, stopOfacSyncJob } from './compliance/ofac.js';
-import { createRelayWorker, redis } from './relayer/queue.js';
+import { createRelayWorker, redisClient } from './relayer/queue.js';
 import { checkBundlerHealth } from './relayer/bundlerClient.js';
 import { checkContractHealth } from './relayer/paymasterClient.js';
 import { checkQueueHealth } from './relayer/queue.js';
 
-// ─── Route Imports ────────────────────────────────────────────────────────────
 import relayRoutes from './api/routes/relay.js';
 import poolRoutes from './api/routes/pool.js';
 import proofRoutes from './api/routes/proof.js';
+import { syncHistoricalDeposits, startDepositIndexer, stopDepositIndexer } from './indexer/depositIndexer.js';
+import { initRailgunEngine } from './railgun/engine.js';
+import { railgunRoutes } from './railgun/routes.js';
 import scoreRoutes from './api/routes/score.js';
 
 // ─── Build Server ─────────────────────────────────────────────────────────────
@@ -63,6 +65,7 @@ export async function buildServer() {
   await fastify.register(relayRoutes, { prefix: '/v1' });
   await fastify.register(poolRoutes, { prefix: '/v1' });
   await fastify.register(proofRoutes, { prefix: '/v1' });
+  await fastify.register(railgunRoutes);
   await fastify.register(scoreRoutes, { prefix: '/v1' });
 
   // ── Global error handler ────────────────────────────────────────────────────
@@ -98,6 +101,13 @@ async function main() {
   // Start BullMQ worker (in-process for simplicity; can be separated)
   const worker = createRelayWorker();
 
+  // Sync historical deposits + start real-time indexer
+  await syncHistoricalDeposits();
+  startDepositIndexer();
+
+  // Start Railgun engine (downloads/loads proving keys async)
+  initRailgunEngine().catch((err) => logger.error({ err }, 'Railgun engine failed to start'));
+
   // Build and start Fastify
   const server = await buildServer();
 
@@ -114,9 +124,10 @@ async function main() {
     logger.info({ signal }, 'Shutdown signal received');
     await server.close();
     await worker.close();
+    stopDepositIndexer();
     stopOfacSyncJob();
     await disconnectDatabase();
-    await redis.quit();
+    await redisClient.quit();
     logger.info('Shutdown complete');
     process.exit(0);
   };
