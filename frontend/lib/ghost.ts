@@ -126,25 +126,58 @@ export async function getMerklePath(targetLeafIndex: number): Promise<MerklePath
     // Use zeros read directly from the contract (in addresses.ts ZEROS array)
     const zeros = ZEROS;
 
-    // ── Chunked eth_getLogs to stay within NodeReal's 5000-block limit ──────────
-    // BSC testnet runs at ~3 blocks/sec. 60,000 blocks = ~5.5 hours back.
-    // All our deposits happened today, so this window always covers them.
-    const CHUNK = 5_000;
-    const LOOK_BACK = 60_000;
+    // ── Raw eth_getLogs — bypass ethers queryFilter which can fail silently ────────
+    // NodeReal BSC testnet: max 5,000 blocks per eth_getLogs call (conservative).
+    // We always fetch from the known GhostPool deployment block so no events are
+    // missed regardless of how old the deposit is.
+    const CHUNK = 2_000;  // well under NodeReal's 50k limit
+    const DEPLOY_BLOCK = 92_830_000;  // First deposit at block 92,834,945 — 5k block safety margin
+    const rpcUrl = BSC_TESTNET.rpcUrls[0]; // use first RPC URL
     const latest = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, latest - LOOK_BACK);
 
-    const allEvents: ethers.EventLog[] = [];
-    for (let start = fromBlock; start <= latest; start += CHUNK) {
-        const end = Math.min(start + CHUNK - 1, latest);
-        const events = await pool.queryFilter(pool.filters.Deposit(), start, end);
-        for (const ev of events) allEvents.push(ev as ethers.EventLog);
+    // Deposit(bytes32 indexed commitment, uint32 indexed leafIndex, uint256 amount, address indexed token, uint256 timestamp)
+    // topic0 = keccak256("Deposit(bytes32,uint32,uint256,address,uint256)")
+    const DEPOSIT_TOPIC = "0x1bb6b69ab2bd33be1fbea262de5267178258d5e96039f6f2e62b9caaa5f70a83";
+
+    async function rawGetLogs(fromBlock: number, toBlock: number) {
+        const body = JSON.stringify({
+            jsonrpc: "2.0", id: 1,
+            method: "eth_getLogs",
+            params: [{
+                address: ADDRESSES.GhostPool,
+                topics: [DEPOSIT_TOPIC],
+                fromBlock: "0x" + fromBlock.toString(16),
+                toBlock: "0x" + toBlock.toString(16),
+            }],
+        });
+        const res = await fetch(rpcUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+        });
+        const json = await res.json() as { result?: { data: string; topics: string[] }[]; error?: { message: string } };
+        if (json.error) throw new Error(`eth_getLogs error: ${json.error.message}`);
+        return json.result ?? [];
     }
+
+    const allEvents: { leafIndex: number; commitment: bigint }[] = [];
+    for (let start = DEPLOY_BLOCK; start <= latest; start += CHUNK) {
+        const end = Math.min(start + CHUNK - 1, latest);
+        const logs = await rawGetLogs(start, end);
+        for (const log of logs) {
+            // commitment = topics[1] (bytes32 indexed)
+            // leafIndex  = topics[2] (uint32 indexed, zero-padded to 32 bytes)
+            const commitment = BigInt(log.topics[1]);
+            const leafIndex = parseInt(log.topics[2], 16);
+            allEvents.push({ leafIndex, commitment });
+        }
+    }
+    console.log(`[getMerklePath] found ${allEvents.length} Deposit events from block ${DEPLOY_BLOCK} to ${latest}`);
 
     // ── Fill leaves ─────────────────────────────────────────────────────────────
     const leaves: bigint[] = Array(2 ** TREE_DEPTH).fill(ZEROS[0]);
     for (const ev of allEvents) {
-        leaves[Number(ev.args.leafIndex)] = BigInt(ev.args.commitment);
+        leaves[ev.leafIndex] = ev.commitment;
     }
 
     // ── Build full Merkle tree ───────────────────────────────────────────────────
@@ -167,8 +200,8 @@ export async function getMerklePath(targetLeafIndex: number): Promise<MerklePath
         console.warn("[ghost] on-chain root:", BigInt(onChainRoot).toString(16));
         throw new Error(
             `Merkle root mismatch — computed root doesn't match chain.\n` +
-            `This usually means some Deposit events fell outside the ${LOOK_BACK}-block window.\n` +
-            `Contact support or wait for the look-back window fix.`
+            `Found ${allEvents.length} Deposit events. ` +
+            `Computed: 0x${root.toString(16).slice(0, 16)}… On-chain: 0x${BigInt(onChainRoot).toString(16).slice(0, 16)}…`
         );
     }
 

@@ -66,6 +66,30 @@ export async function POST(req: NextRequest) {
         //   - postOpGasLimit                (200k) for paymaster postOp + deductFee
         //   - preVerificationGas            (300k) overhead
         //   Total budget: ~2.2M → use 5M to be safe
+        // ── Simulate first to get clear revert reason without wasting gas ────────
+        try {
+            await entryPoint.handleOps.staticCall(
+                [userOp],
+                bundler.address,
+                { gasLimit: BigInt(5_000_000) }
+            );
+        } catch (simErr: unknown) {
+            const se = simErr as { data?: string; message?: string; shortMessage?: string };
+            // Decode EntryPoint FailedOp(uint256 opIndex, string reason) = 0x220266b6
+            let reason = se.shortMessage ?? se.message ?? "simulation failed";
+            if (se.data && se.data.startsWith("0x220266b6")) {
+                // abi.decode the reason string
+                try {
+                    const decoded = ethers.AbiCoder.defaultAbiCoder().decode(
+                        ["uint256", "string"], "0x" + se.data.slice(10)
+                    );
+                    reason = `AA revert: ${decoded[1]} (opIndex ${decoded[0]})`;
+                } catch { /* keep original */ }
+            }
+            console.error("[bundler] simulation failed:", reason, "| data:", se.data);
+            return NextResponse.json({ error: `Simulation failed: ${reason}` }, { status: 500 });
+        }
+
         const tx = await entryPoint.handleOps(
             [userOp],
             bundler.address,

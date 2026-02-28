@@ -18,6 +18,7 @@ import { checkQueueHealth } from './relayer/queue.js';
 import relayRoutes from './api/routes/relay.js';
 import poolRoutes from './api/routes/pool.js';
 import proofRoutes from './api/routes/proof.js';
+import scoreRoutes from './api/routes/score.js';
 
 // ─── Build Server ─────────────────────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ export async function buildServer() {
   await fastify.register(relayRoutes, { prefix: '/v1' });
   await fastify.register(poolRoutes, { prefix: '/v1' });
   await fastify.register(proofRoutes, { prefix: '/v1' });
+  await fastify.register(scoreRoutes, { prefix: '/v1' });
 
   // ── Global error handler ────────────────────────────────────────────────────
   fastify.setErrorHandler((error, _request, reply) => {
