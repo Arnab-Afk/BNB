@@ -7,7 +7,7 @@
 
 ## What Is Ghost?
 
-Ghost lets a wallet with **zero BNB** withdraw stablecoins from a privacy pool using a ZK proof, with gas sponsored by a paymaster and settled in USDC. The user who deposited and the user who withdraws are cryptographically unlinkable.
+Ghost lets a wallet with **zero BNB** withdraw stablecoins from a privacy pool using a ZK proof, with gas sponsored by a paymaster and settled in USDC. The user who deposited and the user who withdraws are cryptographically unlinkable
 
 ```
 Depositor (KYC wallet)  →  Ghost Pool  →  [ ZK proof in browser ]  →  Fresh wallet (0 BNB)
