@@ -14,14 +14,17 @@ import { buildPoseidon } from "circomlibjs";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const DEPLOYER_KEY = "1437c6e656c9afd75cae09210d80ea969aa614cba8a144ea9a8371e173332ddb";
-const USER_KEY     = "7fd207a4b2a0936913f665349b8589087882e70fa798a135952bd15c46726c3b";
+const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY?.replace(/^0x/, "")
+    ?? (() => { throw new Error("DEPLOYER_PRIVATE_KEY not set in .env"); })();
+const USER_KEY     = process.env.USER_PRIVATE_KEY?.replace(/^0x/, "")
+    ?? (() => { throw new Error("USER_PRIVATE_KEY not set in .env"); })();
 const USER_EOA     = "0xe8B3555A33420A389709e436c02871602EAA7e5c";
 const RECIPIENT    = "0x0857779Eebf731323A42f81718Aad5552483EE76";
 const USDC         = "0x64544969ed7ebf5f083679233325356ebe738930"; // Real BSC testnet USDC (18 dec)
 const USDC_AMOUNT  = "0.8";
 
-const GHOST_NOTE   = "ghost:v1:00b5b94e307924d427f9252f84191da7ee4c98dd2bb2cb82d1b16fe8e2c115af:00aea3da6f7d466e287c59f05bf9bcf0fece9ca36861d8fd58a1fe34287c505d:0.5:USDC:12:1a530f765827122d1e3568ed3838fc4a8e20afe0ad8d0e6d590dc53dd45356e0";
+const GHOST_NOTE   = process.env.GHOST_NOTE
+    ?? (() => { throw new Error("GHOST_NOTE not set in .env"); })();
 
 // ── Contract addresses ────────────────────────────────────────────────────────
 const ENTRY_POINT  = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";

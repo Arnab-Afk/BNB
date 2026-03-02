@@ -17,7 +17,7 @@ import { ethers } from "hardhat";
 import { buildPoseidon } from "circomlibjs";
 
 // â”€â”€ Addresses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const DEPLOYER_KEY = "1437c6e656c9afd75cae09210d80ea969aa614cba8a144ea9a8371e173332ddb";
+const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY?.replace(/^0x/, "") ?? (() => { throw new Error("DEPLOYER_PRIVATE_KEY not set in .env"); })();
 const BLANK_WALLET = "0x44cd98CD2E773355dB5761E7D167F57f6a9fE1fB";
 
 const ENTRY_POINT = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";

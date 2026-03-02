@@ -6,7 +6,8 @@
 import { ethers } from "hardhat";
 import { buildPoseidon } from "circomlibjs";
 
-const USER_KEY  = "cd1974264936d8999d5207885abcab1c2a5eab1aa3d3ad7d0d0d4403299d1793";
+const USER_KEY  = process.env.USER_PRIVATE_KEY?.replace(/^0x/, "")
+    ?? (() => { throw new Error("USER_PRIVATE_KEY not set in .env"); })();
 const DEPOSIT_AMOUNT = "0.5"; // USDC
 
 const GHOST_POOL  = "0xd2c227909A77359b422C1BfEa6B482f2559eF6aa";
