@@ -130,8 +130,10 @@
 .btn-brutalist {
   transition: all 0.2s ease;
   position: relative;
-}
-.btn-brutalist:hover {
   transform: translate(-2px, -2px);
   box-shadow: 4px 4px 0px #000;
+}
+.btn-brutalist:hover {
+  transform: none;
+  box-shadow: none;
 }

@@ -15,7 +15,7 @@ const pressStart = Press_Start_2P({
 });
 
 export const metadata: Metadata = {
-  title: "Ghost : Full-Stack Privacy Suite for BNB Chain",
+  title: "Ghost — Privacy DApp",
   description: "Enterprise-grade anonymity meets the efficiency of BNB Chain.",
 };
 
