@@ -83,7 +83,7 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar */}
         <aside className="w-56 shrink-0 border-r border-[#e5e7eb] flex flex-col bg-white/80 backdrop-blur-md">
-          <nav className="flex flex-col flex-1 pt-1">
+          <nav className="flex flex-col flex-1">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
