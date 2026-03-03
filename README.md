@@ -10,20 +10,9 @@
 
 ---
 
-## 🏆 Hackathon Tracks
+## What Is Ghost?
 
-| Track | What We Built |
-|---|---|
-| **4.1 — Gas Relayer** | Full ERC-4337 bundler + GhostPaymaster that sponsors BNB gas, settled in USDC from the pool |
-| **4.2 — Privacy SDK** | Groth16 ZK circuit (Poseidon Merkle proof), browser WASM prover, on-chain Groth16Verifier |
-| **4.3 — Railgun Integration** | Railgun shield/unshield/swap UI with Waku-simulated P2P flow + Proof of Innocence |
-
----
-
-## 🎬 30-Second Demo
-
-**The core idea in one sentence:**  
-A depositor locks USDC into a privacy pool. Later, a *fresh wallet with 0 BNB* proves pool membership via ZK, sends USDC anywhere, and pays gas in USDC — with zero on-chain link back to the original depositor.
+Ghost lets a wallet with **zero BNB** withdraw stablecoins from a privacy pool using a ZK proof, with gas sponsored by a paymaster and settled in USDC. The user who deposited and the user who withdraws are cryptographically unlinkable.
 
 ```
 Wallet A (has USDC)        Ghost Pool          Wallet B (0 BNB, fresh)
@@ -263,15 +252,4 @@ BNB/
 | ERC-4337 | EntryPoint v0.7 · GhostSmartAccount · GhostPaymaster |
 | Backend | Fastify · BullMQ · Prisma · Postgres · Redis |
 | RPC | NodeReal (BSC Testnet) |
-| Compliance | OFAC SDN sync · AssociationSetProvider · Viewing Keys |
-
----
-
-## 👥 Team
-
-Built at **BNB Chain × YZI Labs Hack Bengaluru 2026**  
-Tracks: **4.1 (Gas Relayer) · 4.2 (Privacy SDK) · 4.3 (Railgun)**
-
----
-
-*Ghost Privacy Suite — financial privacy that passes scrutiny.*
+| Compliance | OFAC SDN sync, ASP (Association Set Provider) |

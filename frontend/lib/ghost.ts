@@ -29,7 +29,7 @@ export interface GhostNote {
 }
 
 export interface DepositProgress {
-    step: "checking" | "approving" | "committing" | "done" | "error";
+    step: "minting" | "checking" | "approving" | "committing" | "done" | "error";
     message: string;
     txHash?: string;
     note?: string;
