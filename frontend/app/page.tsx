@@ -21,9 +21,7 @@ type TabId = (typeof TABS)[number]["id"];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("deposit");
-  const [wallet, setWallet] = useState("");
-
-  const active = TABS.find((t) => t.id === activeTab)!;
+  const [wallet, setWallet] = useState("");;
 
   const handleConnect = useCallback(async () => {
     if (wallet) return; // already connected
@@ -123,15 +121,6 @@ export default function App() {
 
         {/* Main content area */}
         <main className="flex-1 overflow-auto">
-          {/* Page title bar */}
-          <div className="border-b border-[#e5e7eb] px-8 py-4 flex items-center gap-4 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-purple-500 border border-purple-500 px-2 py-1 font-(family-name:--font-pixel)">
-              {active.tag}
-            </span>
-            <h1 className="text-base font-bold tracking-tight">{active.label}</h1>
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">{active.desc}</span>
-          </div>
-
           {/* Tab panels — all pre-rendered, toggled with CSS to avoid remount lag */}
           <div>
             <div className={activeTab !== "deposit" ? "hidden" : undefined}><DepositView wallet={wallet} onWalletConnect={setWallet} /></div>
