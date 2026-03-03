@@ -77,7 +77,7 @@ export default function App() {
       {/* Body: sidebar + content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar */}
-        <aside className="w-56 shrink-0 border-r border-[#e5e7eb] flex flex-col bg-white/80 backdrop-blur-md">
+        <aside className="w-56 shrink-0 border-r-2 border-[#e5e7eb] flex flex-col bg-white shadow-[2px_0_12px_0_rgba(0,0,0,0.06)]">
           <nav className="flex flex-col flex-1">
             {TABS.map((tab) => (
               <button
@@ -90,12 +90,12 @@ export default function App() {
                 }`}
               >
                 {activeTab === tab.id && (
-                  <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-purple-500" />
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500" />
                 )}
                 <div className="text-xs font-bold uppercase tracking-widest mb-0.5">
                   {tab.label}
                 </div>
-                <div className={`text-[10px] uppercase tracking-wider ${activeTab === tab.id ? "text-purple-400" : "text-gray-400"}`}>
+                <div className={`text-[10px] uppercase tracking-wider font-medium ${activeTab === tab.id ? "text-purple-400" : "text-gray-400"}`}>
                   {tab.desc}
                 </div>
               </button>
@@ -103,8 +103,8 @@ export default function App() {
           </nav>
 
           {/* Sidebar footer */}
-          <div className="p-5 border-t border-[#e5e7eb]">
-            <div className="font-(family-name:--font-pixel) text-[8px] text-gray-300 leading-relaxed mb-3">
+          <div className="p-5 border-t-2 border-[#e5e7eb]">
+            <div className="font-(family-name:--font-pixel) text-[8px] text-gray-400 leading-relaxed mb-3">
               GHOST<br />PROTOCOL
             </div>
             <div className="flex gap-4">
