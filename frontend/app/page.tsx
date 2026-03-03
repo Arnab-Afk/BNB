@@ -60,9 +60,6 @@ export default function App() {
           </span>
         </div>
         <div className="flex items-center gap-6">
-          <a href="/" className="text-xs font-medium text-gray-500 hover:text-black transition-colors hidden sm:block">
-            Landing ↗
-          </a>
           {wallet ? (
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
@@ -88,7 +85,7 @@ export default function App() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full text-left px-5 py-4 border-b border-[#e5e7eb] transition-all relative ${
+                className={`w-full text-left px-5 py-4 border-b border-[#e5e7eb] transition-colors relative ${
                   activeTab === tab.id
                     ? "bg-black text-white"
                     : "bg-transparent text-black hover:bg-[#f3f4f6]"
@@ -135,13 +132,13 @@ export default function App() {
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">{active.desc}</span>
           </div>
 
-          {/* Tab panels — wallet passed as prop so each view shares the global connection */}
+          {/* Tab panels — all pre-rendered, toggled with CSS to avoid remount lag */}
           <div>
-            {activeTab === "deposit" && <DepositView wallet={wallet} onWalletConnect={setWallet} />}
-            {activeTab === "relay" && <RelayView wallet={wallet} onWalletConnect={setWallet} />}
-            {activeTab === "railgun" && <RailgunView />}
-            {activeTab === "score" && <ScoreView />}
-            {activeTab === "compliance" && <ComplianceView />}
+            <div className={activeTab !== "deposit" ? "hidden" : undefined}><DepositView wallet={wallet} onWalletConnect={setWallet} /></div>
+            <div className={activeTab !== "relay" ? "hidden" : undefined}><RelayView wallet={wallet} onWalletConnect={setWallet} /></div>
+            <div className={activeTab !== "railgun" ? "hidden" : undefined}><RailgunView /></div>
+            <div className={activeTab !== "score" ? "hidden" : undefined}><ScoreView /></div>
+            <div className={activeTab !== "compliance" ? "hidden" : undefined}><ComplianceView /></div>
           </div>
         </main>
       </div>
