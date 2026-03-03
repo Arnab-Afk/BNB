@@ -2,7 +2,7 @@
 import { useState, useCallback } from "react";
 import { deposit, connectWallet, DepositProgress } from "@/lib/ghost";
 
-const DENOMINATIONS = ["1", "10", "100", "1000"];
+const DENOMINATIONS = ["0.2", "0.5", "1", "10"];
 
 interface DepositViewProps {
   wallet?: string;
@@ -10,7 +10,7 @@ interface DepositViewProps {
 }
 
 export default function DepositView({ wallet: walletProp = "", onWalletConnect }: DepositViewProps) {
-  const [amount, setAmount] = useState("10");
+  const [amount, setAmount] = useState("0.2");
   const [token, setToken] = useState<"USDC" | "USDT">("USDC");
   const [localWallet, setLocalWallet] = useState("");
   const [progress, setProgress] = useState<DepositProgress | null>(null);
@@ -33,7 +33,7 @@ export default function DepositView({ wallet: walletProp = "", onWalletConnect }
 
   const handleDeposit = useCallback(async () => {
     if (!wallet) { await handleConnect(); return; }
-    setProgress({ step: "minting", message: "Starting deposit…" });
+    setProgress({ step: "checking", message: "Starting deposit…" });
     await deposit(amount, token, (p) => setProgress({ ...p }));
   }, [wallet, amount, token, handleConnect]);
 
@@ -45,7 +45,7 @@ export default function DepositView({ wallet: walletProp = "", onWalletConnect }
 
   function reset() {
     setProgress(null);
-    setAmount("10");
+    setAmount("0.2");
   }
 
   const fee = (Number(amount) * 0.005).toFixed(2);
@@ -123,11 +123,25 @@ export default function DepositView({ wallet: walletProp = "", onWalletConnect }
                 <path d="M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
               </svg>
             </button>
+
+            {/* Next-step hint */}
+            <div className="mt-4 flex items-start gap-3 p-4 bg-[#0a0a0a] text-white rounded-sm border border-white/10">
+              <span className="text-purple-400 text-base shrink-0 mt-0.5">→</span>
+              <div>
+                <p className="text-xs font-bold text-purple-300 uppercase tracking-widest mb-1">After depositing</p>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Copy your Ghost Note and go to the <strong className="text-white">Relay</strong> tab.
+                  From a fresh wallet with <span className="text-green-400 font-semibold">0 BNB</span>, send{" "}
+                  <span className="text-yellow-400 font-semibold">{amount} USDC</span> to any address —
+                  gas is automatically funded by the Ghost Paymaster.
+                </p>
+              </div>
+            </div>
           </>
         )}
 
         {/* ── Progress ─────────────────────────────────────────────── */}
-        {(step === "minting" || step === "approving" || step === "committing") && (
+        {(step === "checking" || step === "approving" || step === "committing") && (
           <div className="flex flex-col justify-center py-16 gap-5">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 border-2 border-black border-t-transparent rounded-full animate-spin shrink-0" />
@@ -138,11 +152,11 @@ export default function DepositView({ wallet: walletProp = "", onWalletConnect }
             </div>
             <div className="space-y-2 pl-14">
               {[
-                { id: "minting", label: `Minting ${amount} ${token} test tokens` },
+                { id: "checking", label: `Checking ${token} balance & allowance` },
                 { id: "approving", label: "Approving GhostPool contract" },
                 { id: "committing", label: "Submitting deposit + commitment" },
               ].map(({ id, label }) => {
-                const order = ["minting", "approving", "committing"];
+                const order = ["checking", "approving", "committing"];
                 const myIdx = order.indexOf(id);
                 const curIdx = order.indexOf(step);
                 return (
