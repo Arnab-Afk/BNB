@@ -37,9 +37,9 @@ export default function Home() {
           </div>
 
           {/* CTA */}
-          <button className="bg-purple-500 text-white px-5 py-2 text-xs font-bold uppercase tracking-widest transition-all duration-150 -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0px_#000] hover:translate-x-0 hover:translate-y-0 hover:shadow-none">
+          <a href="https://app.theghostlabs.xyz" target="_blank" rel="noopener noreferrer" className="bg-purple-500 text-white px-5 py-2 text-xs font-bold uppercase tracking-widest transition-all duration-150 -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0px_#000] hover:translate-x-0 hover:translate-y-0 hover:shadow-none">
             Launch App
-          </button>
+          </a>
         </nav>
       </header>
 
@@ -504,12 +504,12 @@ export default function Home() {
               Ghost is live on BNB Testnet. Mainnet launch coming soon.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button className="bg-purple-500 text-white px-10 py-5 text-sm font-bold flex items-center group transition-all duration-150 -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0px_#000] hover:translate-x-0 hover:translate-y-0 hover:shadow-none">
+              <a href="https://app.theghostlabs.xyz" target="_blank" rel="noopener noreferrer" className="bg-purple-500 text-white px-10 py-5 text-sm font-bold flex items-center group transition-all duration-150 -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0px_#000] hover:translate-x-0 hover:translate-y-0 hover:shadow-none">
                 LAUNCH APP
                 <svg className="ml-4 w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path d="M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
                 </svg>
-              </button>
+              </a>
               <a href="#developers" className="border border-black px-10 py-5 text-sm font-bold flex items-center group transition-all duration-150 -translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0px_#000] hover:translate-x-0 hover:translate-y-0 hover:shadow-none bg-white">
                 READ DOCS
                 <svg className="ml-4 w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
